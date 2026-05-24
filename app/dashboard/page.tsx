@@ -3,12 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/app/lib/supabase';
-import { LogOut, User, Phone } from 'lucide-react';
+import { LogOut, User, Mail } from 'lucide-react';
 
 interface UserProfile {
   id: string;
-  phone: string;
-  email?: string;
+  email: string;
 }
 
 export default function DashboardPage() {
@@ -28,8 +27,7 @@ export default function DashboardPage() {
 
       setUser({
         id: data.session.user.id,
-        phone: data.session.user.phone || 'N/A',
-        email: data.session.user.email,
+        email: data.session.user.email || 'N/A',
       });
       setLoading(false);
     };
@@ -142,19 +140,12 @@ export default function DashboardPage() {
             <div className="space-y-4">
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Phone</p>
+                <div className="flex items-center gap-2 mt-1">Email</p>
                 <div className="flex items-center gap-2 mt-1">
-                  <Phone className="w-4 h-4 text-[#1d9e75]" />
-                  <p className="font-semibold text-gray-900">{user?.phone}</p>
+                  <Mail className="w-4 h-4 text-[#1d9e75]" />
+                  <p className="font-semibold text-gray-900 break-all">{user?.email}</p>
                 </div>
               </div>
-
-              {user?.email && (
-                <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Email</p>
-                  <p className="font-semibold text-gray-900 mt-1 break-all">{user.email}</p>
-                </div>
-              )}
-
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">User ID</p>
                 <p className="font-mono text-xs text-gray-900 mt-1 break-all">{user?.id}</p>
@@ -175,17 +166,23 @@ export default function DashboardPage() {
         <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Next Steps</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button className="p-4 border-2 border-green-200 rounded-lg hover:bg-green-50 transition-colors text-left">
-              <h3 className="font-semibold text-gray-900 mb-1">📱 Create a Group</h3>
-              <p className="text-sm text-gray-600">Start a group and invite friends to buy together</p>
-            </button>
-            <button className="p-4 border-2 border-green-200 rounded-lg hover:bg-green-50 transition-colors text-left">
+            <button
+              onClick={() => router.push('/products')}
+              className="p-4 border-2 border-green-200 rounded-lg hover:bg-green-50 transition-colors text-left"
+            >
               <h3 className="font-semibold text-gray-900 mb-1">🛒 Browse Products</h3>
               <p className="text-sm text-gray-600">Explore items available for group buying</p>
             </button>
+            <button
+              onClick={() => router.push('/products')}
+              className="p-4 border-2 border-green-200 rounded-lg hover:bg-green-50 transition-colors text-left"
+            >
+              <h3 className="font-semibold text-gray-900 mb-1">👥 Start or Join Group</h3>
+              <p className="text-sm text-gray-600">Create a group or join existing group buys</p>
+            </button>
             <button className="p-4 border-2 border-green-200 rounded-lg hover:bg-green-50 transition-colors text-left">
-              <h3 className="font-semibold text-gray-900 mb-1">👥 Join a Group</h3>
-              <p className="text-sm text-gray-600">Join existing groups via WhatsApp link</p>
+              <h3 className="font-semibold text-gray-900 mb-1">📱 Invite Friends</h3>
+              <p className="text-sm text-gray-600">Share group buys via WhatsApp</p>
             </button>
             <button className="p-4 border-2 border-green-200 rounded-lg hover:bg-green-50 transition-colors text-left">
               <h3 className="font-semibold text-gray-900 mb-1">⚙️ Settings</h3>

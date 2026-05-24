@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/app/lib/supabase';
-import { Lock, Phone, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
-  const [step, setStep] = useState<'phone' | 'otp'>('phone');
+  const [step, setStep] = useState<'email' | 'otp'>('email');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -31,23 +31,23 @@ export default function LoginPage() {
     setMessage('');
     setLoading(true);
 
-    // Validate phone number (basic validation)
-    const phoneRegex = /^\+?[1-9]\d{1,14}$/;
-    if (!phoneRegex.test(phone.replace(/\s+/g, ''))) {
-      setError('Please enter a valid phone number');
+    // Validate email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
       setLoading(false);
       return;
     }
 
     try {
       const { error } = await supabase.auth.signInWithOtp({
-        phone: phone.replace(/\s+/g, ''),
+        email: email.trim(),
       });
 
       if (error) {
         setError(error.message);
       } else {
-        setMessage('OTP sent successfully! Check your SMS.');
+        setMessage('OTP sent successfully! Check your email inbox or spam folder.');
         setStep('otp');
       }
     } catch (err) {
@@ -71,9 +71,9 @@ export default function LoginPage() {
 
     try {
       const { error } = await supabase.auth.verifyOtp({
-        phone: phone.replace(/\s+/g, ''),
+        email: email.trim(),
         token: otp,
-        type: 'sms',
+        type: 'email',
       });
 
       if (error) {
@@ -108,8 +108,8 @@ export default function LoginPage() {
         <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
           <div className="flex items-center justify-center mb-6">
             <div className="p-3 bg-green-100 rounded-full">
-              {step === 'phone' ? (
-                <Phone className="w-6 h-6 text-[#1d9e75]" />
+              {step === 'email' ? (
+                <Mail className="w-6 h-6 text-[#1d9e75]" />
               ) : (
                 <Lock className="w-6 h-6 text-[#1d9e75]" />
               )}
@@ -117,12 +117,12 @@ export default function LoginPage() {
           </div>
 
           <h1 className="text-2xl font-bold text-center text-gray-900 mb-2">
-            {step === 'phone' ? 'Enter Your Phone' : 'Verify OTP'}
+            {step === 'email' ? 'Enter Your Email' : 'Verify OTP'}
           </h1>
           <p className="text-center text-gray-600 mb-6">
-            {step === 'phone'
-              ? 'We will send you a one-time password via SMS'
-              : 'Enter the 6-digit code we sent to your phone'}
+            {step === 'email'
+              ? 'We will send you a one-time password via email'
+              : 'Enter the 6-digit code we sent to your email'}
           </p>
 
           {/* Messages */}
@@ -137,29 +137,29 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Phone Step */}
-          {step === 'phone' && (
+          {/* Email Step */}
+          {step === 'email' && (
             <form onSubmit={handleSendOTP}>
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-900 mb-2">
-                  Phone Number
+                  Email Address
                 </label>
                 <input
-                  type="tel"
-                  placeholder="+1 (555) 000-0000"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1d9e75] focus:border-transparent disabled:bg-gray-50"
                 />
                 <p className="text-xs text-gray-500 mt-2">
-                  Include country code (e.g., +1 for USA, +91 for India)
+                  Make sure to check your spam folder if you don't see the email
                 </p>
               </div>
 
               <button
                 type="submit"
-                disabled={loading || !phone}
+                disabled={loading || !email}
                 className="w-full bg-[#1d9e75] hover:bg-[#085041] text-white font-semibold py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading ? 'Sending...' : 'Send OTP'}
@@ -185,7 +185,7 @@ export default function LoginPage() {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1d9e75] focus:border-transparent disabled:bg-gray-50 text-center text-2xl tracking-widest font-mono"
                 />
                 <p className="text-xs text-gray-500 mt-2">
-                  Enter the 6-digit code sent to {phone}
+                  Enter the 6-digit code sent to {email}
                 </p>
               </div>
 
@@ -201,14 +201,14 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setStep('phone');
+                  setStep('email');
                   setOtp('');
                   setError('');
                   setMessage('');
                 }}
                 className="w-full mt-3 text-[#1d9e75] hover:text-[#085041] font-semibold py-2 transition-colors"
               >
-                Change Phone Number
+                Change Email
               </button>
             </form>
           )}
@@ -237,7 +237,7 @@ export default function LoginPage() {
               ✓ Secure
             </span>
             <span className="flex items-center gap-1">
-              📱 SMS Verified
+              📧 Email Verified
             </span>
           </div>
         </div>
@@ -245,3 +245,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
