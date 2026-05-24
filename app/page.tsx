@@ -47,9 +47,9 @@ export default function Home() {
               >
                 Impact
               </a>
-              <button className="px-6 py-2 bg-[#1d9e75] text-white rounded-lg hover:bg-[#085041] transition-colors">
+              <Link href="/login" className="px-6 py-2 bg-[#1d9e75] text-white rounded-lg hover:bg-[#085041] transition-colors">
                 Get Started
-              </button>
+              </Link>
             </div>
 
             {/* Mobile Menu Button */}
@@ -87,9 +87,9 @@ export default function Home() {
               >
                 Impact
               </a>
-              <button className="w-full mt-4 px-6 py-2 bg-[#1d9e75] text-white rounded-lg hover:bg-[#085041] transition-colors">
+              <Link href="/login" className="block w-full mt-4 px-6 py-2 bg-[#1d9e75] text-white rounded-lg hover:bg-[#085041] transition-colors text-center">
                 Get Started
-              </button>
+              </Link>
             </div>
           )}
         </div>
@@ -107,9 +107,9 @@ export default function Home() {
             No minimum orders. No membership fees.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <button className="px-8 py-3 bg-[#1d9e75] text-white rounded-lg hover:bg-[#085041] transition-colors font-semibold flex items-center justify-center gap-2">
+            <Link href="/login" className="px-8 py-3 bg-[#1d9e75] text-white rounded-lg hover:bg-[#085041] transition-colors font-semibold flex items-center justify-center gap-2">
               Start Buying Now <ArrowRight size={20} />
-            </button>
+            </Link>
             <button className="px-8 py-3 border-2 border-gray-300 text-gray-900 rounded-lg hover:border-[#1d9e75] hover:text-[#1d9e75] transition-colors font-semibold">
               Learn More
             </button>
