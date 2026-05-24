@@ -105,12 +105,12 @@ export default function ProductsPage() {
     return product.category.toLowerCase() === selectedCategory.toLowerCase();
   });
 
-  const handleJoinGroupBuy = (productId: string, groupBuyId: string) => {
-    router.push(`/group-buy/${groupBuyId}`);
+  const handleJoinGroupBuy = (groupBuyId: string) => {
+    router.push(`/group/${groupBuyId}`);
   };
 
   const handleStartGroupBuy = (productId: string) => {
-    router.push(`/create-group-buy/${productId}`);
+    router.push(`/start-group/${productId}`);
   };
 
   if (loading) {
@@ -290,7 +290,6 @@ export default function ProductsPage() {
                           <button
                             onClick={() =>
                               handleJoinGroupBuy(
-                                product.id,
                                 product.activeGroupBuy!.id
                               )
                             }
