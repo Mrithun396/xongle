@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/app/components/Navbar';
 import { supabase } from '@/app/lib/supabase';
-import { CheckCircle, Plus, ShoppingBag, TrendingUp, Users, AlertCircle, Sparkles } from 'lucide-react';
+import { CheckCircle, Plus, ShoppingBag, TrendingUp, Users, AlertCircle, Sparkles, Edit3, Trash2 } from 'lucide-react';
 
 interface SellerProfile {
   id: string;
@@ -23,17 +23,30 @@ interface ProductRecord {
   discount_percent: number;
   image_url: string | null;
   status: string;
+  orders_count?: number;
+}
+
+interface SellerStats {
+  totalOrders: number;
+  totalRevenue: number;
+  commission: number;
 }
 
 export default function SellerPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<SellerProfile | null>(null);
   const [products, setProducts] = useState<ProductRecord[]>([]);
+  const [stats, setStats] = useState<SellerStats>({
+    totalOrders: 0,
+    totalRevenue: 0,
+    commission: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [submitMessage, setSubmitMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -68,7 +81,7 @@ export default function SellerPage() {
           throw new Error('Unable to load seller profile.');
         }
 
-        if (profileData.role !== 'seller') {
+        if (profileData.role !== 'seller' && profileData.role !== 'admin') {
           router.push('/dashboard');
           return;
         }
@@ -82,7 +95,7 @@ export default function SellerPage() {
 
         const { data: productsData, error: productsError } = await supabase
           .from('products')
-          .select('*')
+          .select('*, orders(id, amount)')
           .eq('seller_id', profileData.id)
           .order('created_at', { ascending: false });
 
@@ -90,7 +103,21 @@ export default function SellerPage() {
           throw productsError;
         }
 
-        setProducts(productsData || []);
+        const normalizedProducts = (productsData || []).map((product: any) => ({
+          ...product,
+          orders_count: Array.isArray(product.orders) ? product.orders.length : 0,
+        }));
+
+        const allOrders = normalizedProducts.flatMap((product) => product.orders || []);
+        const totalRevenue = allOrders.reduce((sum, order: any) => sum + Number(order.amount || 0), 0);
+        const totalOrders = allOrders.length;
+
+        setProducts(normalizedProducts);
+        setStats({
+          totalOrders,
+          totalRevenue,
+          commission: totalRevenue * 0.05,
+        });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load seller dashboard.');
       } finally {
@@ -100,18 +127,6 @@ export default function SellerPage() {
 
     loadSellerData();
   }, [router]);
-
-  const stats = useMemo(() => {
-    const totalOrders = products.reduce((result, product) => result + 0, 0);
-    const totalRevenue = products.reduce((result, product) => result + Number(product.price || 0), 0);
-    const commission = totalRevenue * 0.05;
-
-    return {
-      totalOrders,
-      totalRevenue,
-      commission,
-    };
-  }, [products]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -126,12 +141,12 @@ export default function SellerPage() {
       const price = Number(form.price);
       const discountPercent = Number(form.discount_percent);
 
-      if (!form.name.trim() || Number.isNaN(price)) {
+      if (!form.name.trim() || Number.isNaN(price) || price <= 0) {
         setSubmitError('Provide a valid product name and price.');
         return;
       }
 
-      const { error } = await supabase.from('products').insert({
+      const item = {
         seller_id: profile.id,
         name: form.name.trim(),
         description: form.description.trim() || null,
@@ -140,13 +155,30 @@ export default function SellerPage() {
         discount_percent: discountPercent,
         image_url: form.image_url.trim() || null,
         status: 'active',
-      });
+      };
 
-      if (error) {
-        throw error;
+      if (editingProductId) {
+        const { error } = await supabase
+          .from('products')
+          .update(item)
+          .eq('id', editingProductId);
+
+        if (error) {
+          throw error;
+        }
+
+        setSubmitMessage('Product updated successfully.');
+      } else {
+        const { error } = await supabase.from('products').insert(item);
+
+        if (error) {
+          throw error;
+        }
+
+        setSubmitMessage('Product added successfully.');
       }
 
-      setSubmitMessage('Product added successfully.');
+      setEditingProductId(null);
       setForm({
         name: '',
         description: '',
@@ -156,19 +188,76 @@ export default function SellerPage() {
         image_url: '',
       });
 
-      const { data: updatedProducts, error: productsError } = await supabase
-        .from('products')
-        .select('*')
-        .eq('seller_id', profile.id)
-        .order('created_at', { ascending: false });
+      await reloadProducts(profile.id);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Unable to save product.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-      if (productsError) {
-        throw productsError;
+  const reloadProducts = async (sellerId: string) => {
+    const { data: productsData, error: productsError } = await supabase
+      .from('products')
+      .select('*, orders(id, amount)')
+      .eq('seller_id', sellerId)
+      .order('created_at', { ascending: false });
+
+    if (productsError) {
+      throw productsError;
+    }
+
+    const normalizedProducts = (productsData || []).map((product: any) => ({
+      ...product,
+      orders_count: Array.isArray(product.orders) ? product.orders.length : 0,
+    }));
+
+    const allOrders = normalizedProducts.flatMap((product) => product.orders || []);
+    const totalRevenue = allOrders.reduce((sum, order: any) => sum + Number(order.amount || 0), 0);
+    const totalOrders = allOrders.length;
+
+    setProducts(normalizedProducts);
+    setStats({
+      totalOrders,
+      totalRevenue,
+      commission: totalRevenue * 0.05,
+    });
+  };
+
+  const handleEdit = (product: ProductRecord) => {
+    setEditingProductId(product.id);
+    setForm({
+      name: product.name,
+      description: product.description || '',
+      price: String(product.price),
+      category: product.category,
+      discount_percent: String(product.discount_percent),
+      image_url: product.image_url || '',
+    });
+    setSubmitMessage('');
+    setSubmitError('');
+  };
+
+  const handleDelete = async (productId: string) => {
+    if (!profile) return;
+
+    const confirmed = window.confirm('Delete this product? This action cannot be undone.');
+    if (!confirmed) return;
+
+    setSubmitting(true);
+    setSubmitError('');
+    setSubmitMessage('');
+
+    try {
+      const { error } = await supabase.from('products').delete().eq('id', productId);
+      if (error) {
+        throw error;
       }
 
-      setProducts(updatedProducts || []);
+      setSubmitMessage('Product deleted successfully.');
+      await reloadProducts(profile.id);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Unable to add product.');
+      setSubmitError(err instanceof Error ? err.message : 'Unable to delete product.');
     } finally {
       setSubmitting(false);
     }
@@ -223,13 +312,20 @@ export default function SellerPage() {
           </Link>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-100">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-gray-500">Total products</p>
               <ShoppingBag className="h-5 w-5 text-[#1d9e75]" />
             </div>
             <p className="mt-3 text-3xl font-bold text-gray-950">{products.length}</p>
+          </div>
+          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-100">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-gray-500">Total orders</p>
+              <Users className="h-5 w-5 text-[#1d9e75]" />
+            </div>
+            <p className="mt-3 text-3xl font-bold text-gray-950">{stats.totalOrders}</p>
           </div>
           <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-100">
             <div className="flex items-center justify-between">
@@ -278,7 +374,7 @@ export default function SellerPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Discount %</label>
-                  <input type="number" min="0" max="100" value={form.discount_percent} onChange={(e) => setForm((prev) => ({ ...prev, discount_percent: e.target.value }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#1d9e75]" placeholder="10" />
+                  <input type="number" min="0" max="50" value={form.discount_percent} onChange={(e) => setForm((prev) => ({ ...prev, discount_percent: e.target.value }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#1d9e75]" placeholder="10" />
                 </div>
               </div>
 
@@ -290,6 +386,7 @@ export default function SellerPage() {
                     <option value="electronics">Electronics</option>
                     <option value="fashion">Fashion</option>
                     <option value="home">Home</option>
+                    <option value="beauty">Beauty</option>
                   </select>
                 </div>
                 <div>
@@ -300,51 +397,95 @@ export default function SellerPage() {
 
               <button type="submit" disabled={submitting} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#1d9e75] px-4 py-2.5 font-semibold text-white transition hover:bg-[#15845f] disabled:cursor-not-allowed disabled:opacity-70">
                 <Plus className="h-4 w-4" />
-                {submitting ? 'Adding product...' : 'Add product'}
+                {submitting ? (editingProductId ? 'Updating product...' : 'Saving product...') : editingProductId ? 'Update product' : 'Add product'}
               </button>
+              {editingProductId && (
+                <button type="button" onClick={() => {
+                  setEditingProductId(null);
+                  setForm({
+                    name: '',
+                    description: '',
+                    price: '',
+                    category: 'grocery',
+                    discount_percent: '0',
+                    image_url: '',
+                  });
+                  setSubmitError('');
+                  setSubmitMessage('');
+                }} className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 font-semibold text-gray-700 transition hover:bg-gray-50">
+                  Cancel edit
+                </button>
+              )}
             </form>
           </section>
 
           <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-            <div className="mb-4">
-              <h2 className="text-xl font-bold text-gray-950">Your products</h2>
-              <p className="mt-1 text-sm text-gray-600">Track active group buys and buyer interest for each listing.</p>
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-gray-950">Your products</h2>
+                <p className="mt-1 text-sm text-gray-600">Track active sales, orders, and manage your catalog.</p>
+              </div>
             </div>
 
-            <div className="space-y-3">
-              {products.map((product) => (
-                <article key={product.id} className="rounded-xl border border-gray-100 p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-semibold text-gray-950">{product.name}</p>
-                      <p className="mt-1 text-sm text-gray-600">{product.description || 'No description added yet.'}</p>
-                    </div>
-                    <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-[#1d9e75]">{product.status}</span>
-                  </div>
-
-                  <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-lg bg-gray-50 p-3 text-sm">
-                      <p className="text-gray-500">Price</p>
-                      <p className="mt-1 font-bold text-gray-950">₹{Number(product.price).toFixed(2)}</p>
-                    </div>
-                    <div className="rounded-lg bg-gray-50 p-3 text-sm">
-                      <p className="text-gray-500">Active group buys</p>
-                      <p className="mt-1 font-bold text-gray-950">0</p>
-                    </div>
-                    <div className="rounded-lg bg-gray-50 p-3 text-sm">
-                      <p className="text-gray-500">Orders</p>
-                      <p className="mt-1 font-bold text-gray-950">0</p>
-                    </div>
-                  </div>
-                </article>
-              ))}
-
-              {products.length === 0 && (
-                <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500">
-                  No products yet. Add your first listing to start selling.
-                </div>
-              )}
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead>
+                  <tr className="bg-gray-50 text-left text-gray-600">
+                    <th className="px-4 py-3">Product</th>
+                    <th className="px-4 py-3">Price</th>
+                    <th className="px-4 py-3">Discount</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Orders</th>
+                    <th className="px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {products.map((product) => (
+                    <tr key={product.id} className="bg-white">
+                      <td className="px-4 py-4 align-top">
+                        <div className="flex items-center gap-3">
+                          <div className="h-14 w-14 overflow-hidden rounded-xl bg-gray-100">
+                            {product.image_url ? (
+                              <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full items-center justify-center text-2xl">📦</div>
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900">{product.name}</p>
+                            <p className="text-xs text-gray-500">{product.category}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 align-top text-gray-900">₹{Number(product.price).toFixed(2)}</td>
+                      <td className="px-4 py-4 align-top text-gray-900">{product.discount_percent}%</td>
+                      <td className="px-4 py-4 align-top">
+                        <span className="rounded-full bg-green-50 px-2 py-1 text-xs font-semibold text-[#1d9e75]">{product.status}</span>
+                      </td>
+                      <td className="px-4 py-4 align-top text-gray-900">{product.orders_count || 0}</td>
+                      <td className="px-4 py-4 align-top">
+                        <div className="flex flex-wrap gap-2">
+                          <button type="button" onClick={() => handleEdit(product)} className="inline-flex items-center gap-2 rounded-lg bg-[#1d9e75] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#15845f]">
+                            <Edit3 className="h-4 w-4" />
+                            Edit
+                          </button>
+                          <button type="button" onClick={() => handleDelete(product.id)} className="inline-flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100">
+                            <Trash2 className="h-4 w-4" />
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+
+            {products.length === 0 && (
+              <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500">
+                No products yet. Add your first listing to start selling.
+              </div>
+            )}
           </section>
         </div>
       </div>
