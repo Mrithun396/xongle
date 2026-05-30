@@ -39,6 +39,14 @@ export default function CartPage() {
     router.push('/checkout');
   };
 
+  const subtotal = cartTotal;
+  const deliveryCharge = subtotal > 499 ? 0 : 49;
+  const total = subtotal + deliveryCharge;
+  const savings = cart.reduce((total, item) => {
+    const discountedPrice = item.price * (1 - item.discount_percent / 100);
+    return total + (item.price - discountedPrice) * item.quantity;
+  }, 0);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-white to-green-50">
@@ -197,47 +205,27 @@ export default function CartPage() {
                     <Zap className="w-5 h-5 text-orange-500" />
                     <p className="font-semibold text-green-700">You Save</p>
                   </div>
-                  <p className="text-3xl font-bold text-green-600">
-                    ₹
-                    {(
-                      cart.reduce(
-                        (total, item) =>
-                          total +
-                          (item.price - item.price * (1 - item.discount_percent / 100)) *
-                            item.quantity,
-                        0
-                      )
-                    ).toFixed(2)}
-                  </p>
+                  <p className="text-3xl font-bold text-green-600">₹{savings.toFixed(2)}</p>
                   <p className="text-xs text-green-700 mt-1">with group discounts</p>
                 </div>
 
-                {/* Totals */}
                 <div className="space-y-3 border-t border-gray-200 pt-4">
                   <div className="flex justify-between text-gray-700">
                     <span>Subtotal</span>
-                    <span>₹{cartTotal.toFixed(2)}</span>
+                    <span>₹{subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-gray-700">
-                    <span>Shipping</span>
-                    <span className="text-green-600 font-semibold">FREE</span>
-                  </div>
-                  <div className="flex justify-between text-gray-700">
-                    <span>Tax</span>
-                    <span>
-                      ₹
-                      {(cartTotal * 0.05).toFixed(2)}
+                    <span>Delivery charge</span>
+                    <span className={deliveryCharge === 0 ? 'text-green-600 font-semibold' : 'text-gray-900'}>
+                      {deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge.toFixed(2)}`}
                     </span>
                   </div>
                 </div>
 
-                {/* Total */}
                 <div className="border-t border-gray-200 pt-4">
                   <div className="flex justify-between items-center mb-4">
                     <span className="text-lg font-bold text-gray-900">Total</span>
-                    <span className="text-3xl font-bold text-[#1d9e75]">
-                      ₹{(cartTotal + cartTotal * 0.05).toFixed(2)}
-                    </span>
+                    <span className="text-3xl font-bold text-[#1d9e75]">₹{total.toFixed(2)}</span>
                   </div>
                 </div>
 
@@ -252,7 +240,7 @@ export default function CartPage() {
                 ) : (
                   <button
                     onClick={handleCheckout}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+                    className="w-full bg-[#1d9e75] hover:bg-[#15845f] text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
                   >
                     <LogIn className="w-5 h-5" />
                     Sign In to Checkout

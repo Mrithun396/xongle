@@ -55,9 +55,15 @@ export default function CheckoutPage() {
     return 0;
   }, [couponCode, subtotal]);
 
-  const shipping = subtotal > 0 ? 0 : 0;
-  const tax = (subtotal - couponDiscount) * 0.05;
-  const total = subtotal - couponDiscount + shipping + tax;
+  const deliveryCharge = subtotal > 499 ? 0 : 49;
+  const tax = 0;
+  const savings = useMemo(() => {
+    return cart.reduce((total, item) => {
+      const discountedPrice = item.price * (1 - item.discount_percent / 100);
+      return total + (item.price - discountedPrice) * item.quantity;
+    }, 0);
+  }, [cart]);
+  const total = subtotal - couponDiscount + deliveryCharge;
 
   const applyCoupon = () => {
     const code = couponCode.trim().toUpperCase();
@@ -287,21 +293,24 @@ export default function CheckoutPage() {
             </div>
 
             <div className="mt-5 rounded-xl bg-gray-50 p-4">
-              <div className="flex items-center justify-between text-sm text-gray-600">
+              <div className="p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-5 h-5 text-green-600" />
+                  <p className="font-semibold text-green-700">You Save</p>
+                </div>
+                <p className="text-3xl font-bold text-green-600">₹{savings.toFixed(2)}</p>
+                <p className="text-xs text-green-700 mt-1">compared to original price</p>
+              </div>
+
+              <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
                 <span>Subtotal</span>
                 <span>₹{subtotal.toFixed(2)}</span>
               </div>
-              <div className="mt-2 flex items-center justify-between text-sm text-gray-600">
-                <span>Coupon discount</span>
-                <span>-₹{couponDiscount.toFixed(2)}</span>
-              </div>
-              <div className="mt-2 flex items-center justify-between text-sm text-gray-600">
-                <span>Shipping</span>
-                <span>₹{shipping.toFixed(2)}</span>
-              </div>
-              <div className="mt-2 flex items-center justify-between text-sm text-gray-600">
-                <span>Tax (5%)</span>
-                <span>₹{tax.toFixed(2)}</span>
+              <div className="mt-3 flex items-center justify-between text-sm text-gray-600">
+                <span>Delivery charge</span>
+                <span className={deliveryCharge === 0 ? 'text-green-600 font-semibold' : 'text-gray-900'}>
+                  {deliveryCharge === 0 ? 'FREE' : `₹${deliveryCharge.toFixed(2)}`}
+                </span>
               </div>
               <div className="mt-4 border-t border-gray-200 pt-4 flex items-center justify-between">
                 <span className="text-base font-bold text-gray-950">Total</span>
