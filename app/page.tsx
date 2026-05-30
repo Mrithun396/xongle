@@ -230,51 +230,55 @@ export default function Home() {
                         const discountedPrice = product.price * (1 - product.discount_percent / 100);
 
                         return (
-                          <article key={product.id} className="rounded-2xl bg-white shadow-[0_1px_6px_rgba(0,0,0,0.08)] ring-1 ring-black/5 w-full">
-                            <div className="relative aspect-[4/5] bg-[#F6F6F6]">
-                              {product.image_url ? (
-                                <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
-                              ) : (
-                                <div className="flex h-full items-center justify-center text-5xl">📦</div>
-                              )}
-                            </div>
-
-                            <div className="flex flex-1 flex-col p-4">
-                              <h3 className="text-sm font-semibold leading-snug text-[#2D2D2D] line-clamp-2">{product.name}</h3>
-
-                              <div className="mt-3 flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2">
-                                  <p className="text-base font-bold text-[#1D9E75]">₹{discountedPrice.toFixed(2)}</p>
-                                  {product.discount_percent > 0 && <p className="text-xs text-gray-400 line-through">₹{product.price.toFixed(2)}</p>}
+                          <Link key={product.id} href={`/products/${product.id}`} className="block">
+                            <article className="group cursor-pointer overflow-hidden rounded-2xl bg-white shadow-[0_1px_6px_rgba(0,0,0,0.08)] ring-1 ring-black/5 transition hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+                              <div className="relative">
+                                <div className="relative aspect-[4/5] bg-[#F6F6F6]">
+                                  {product.image_url ? (
+                                    <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+                                  ) : (
+                                    <div className="flex h-full items-center justify-center text-5xl">📦</div>
+                                  )}
                                 </div>
-                                {product.discount_percent > 0 && (
-                                  <span className="rounded-full bg-[#FFF1F0] px-2 py-1 text-[10px] font-bold text-[#FF6161]">
-                                    {product.discount_percent}% off
-                                  </span>
-                                )}
-                              </div>
 
-                              <div className="mt-2 flex items-center gap-1 text-xs font-medium text-[#6B7280]">
-                                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                                <span>4.2</span>
-                              </div>
+                                <div className="flex flex-1 flex-col p-4">
+                                  <h3 className="text-sm font-semibold leading-snug text-[#2D2D2D] line-clamp-2">{product.name}</h3>
 
-                              <div className="mt-4 grid grid-cols-2 gap-2">
-                                <button
-                                  onClick={() => handleAddToCart(product)}
-                                  className="rounded-xl bg-[#1D9E75] px-3 py-2.5 text-xs font-bold text-white transition hover:bg-[#15845f]"
-                                >
-                                  Add to Cart
-                                </button>
-                                <button
-                                  onClick={() => router.push(`/start-group/${product.id}`)}
-                                  className="rounded-xl border border-[#1D9E75] bg-white px-3 py-2.5 text-xs font-bold text-[#1D9E75] transition hover:bg-emerald-50"
-                                >
-                                  Group Buy
-                                </button>
+                                  <div className="mt-3 flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-base font-bold text-[#1D9E75]">₹{discountedPrice.toFixed(2)}</p>
+                                      {product.discount_percent > 0 && <p className="text-xs text-gray-400 line-through">₹{product.price.toFixed(2)}</p>}
+                                    </div>
+                                    {product.discount_percent > 0 && (
+                                      <span className="rounded-full bg-[#FFF1F0] px-2 py-1 text-[10px] font-bold text-[#FF6161]">
+                                        {product.discount_percent}% off
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="mt-2 flex items-center gap-1 text-xs font-medium text-[#6B7280]">
+                                    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                                    <span>4.2</span>
+                                  </div>
+
+                                  <div className="mt-4 grid grid-cols-2 gap-2" onClick={(e) => e.stopPropagation()}>
+                                    <button
+                                      onClick={() => handleAddToCart(product)}
+                                      className="rounded-xl bg-[#1D9E75] px-3 py-2.5 text-xs font-bold text-white transition hover:bg-[#15845f]"
+                                    >
+                                      Add to Cart
+                                    </button>
+                                    <button
+                                      onClick={() => router.push(`/start-group/${product.id}`)}
+                                      className="rounded-xl border border-[#1D9E75] bg-white px-3 py-2.5 text-xs font-bold text-[#1D9E75] transition hover:bg-emerald-50"
+                                    >
+                                      Group Buy
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          </article>
+                            </article>
+                          </Link>
                         );
                       })}
                     </div>

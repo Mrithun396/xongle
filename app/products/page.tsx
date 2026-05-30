@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/app/components/Navbar';
 import { supabase } from '@/app/lib/supabase';
@@ -312,17 +313,19 @@ export default function ProductsPage() {
                   const hasGroupBuy = Boolean(product.activeGroupBuyCount);
 
                   return (
-                    <article key={product.id} className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-[0_1px_6px_rgba(0,0,0,0.08)] transition-shadow duration-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
-                      <div className="relative aspect-[4/5] bg-[#F6F6F6]">
-                        {product.image_url ? (
-                          <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="flex h-full items-center justify-center text-5xl">📦</div>
-                        )}
-                      </div>
+                    <Link key={product.id} href={`/products/${product.id}`} className="block">
+                      <article className="group cursor-pointer flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-[0_1px_6px_rgba(0,0,0,0.08)] transition-shadow duration-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+                        <div className="relative">
+                        <div className="relative aspect-[4/5] bg-[#F6F6F6]">
+                          {product.image_url ? (
+                            <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-5xl">📦</div>
+                          )}
+                        </div>
 
-                      <div className="flex flex-1 flex-col p-4">
-                        <h2 className="text-sm font-semibold leading-snug text-[#2D2D2D] line-clamp-2">{product.name}</h2>
+                        <div className="flex flex-1 flex-col p-4">
+                          <h2 className="text-sm font-semibold leading-snug text-[#2D2D2D] line-clamp-2">{product.name}</h2>
 
                         <div className="mt-3 flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
@@ -352,7 +355,7 @@ export default function ProductsPage() {
                           </div>
                         )}
 
-                        <div className="mt-4 grid grid-cols-2 gap-2">
+                        <div className="mt-4 grid grid-cols-2 gap-2" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
                             onClick={() => handleAddToCart(product)}
@@ -373,7 +376,9 @@ export default function ProductsPage() {
                           <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-[#1D9E75]">{cartMessage[product.id]}</p>
                         )}
                       </div>
-                    </article>
+                    </div>
+                  </article>
+                </Link>
                   );
                 })}
               </div>

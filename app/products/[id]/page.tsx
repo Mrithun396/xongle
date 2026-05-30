@@ -16,6 +16,7 @@ interface Product {
   category: string;
   discount_percent: number;
   image_url: string | null;
+  seller_id: string | null;
   status: string;
 }
 
@@ -24,7 +25,7 @@ interface GroupBuy {
   product_id: string;
   member_count: number;
   status: string;
-  expires_at: string;
+  expires_at: string | null;
 }
 
 export default function ProductDetailPage() {
@@ -137,6 +138,15 @@ export default function ProductDetailPage() {
     router.push(`/start-group/${productId}`);
   };
 
+  const formatTimeLeft = (expires_at: string | null) => {
+    if (!expires_at) return 'Permanent';
+    const diff = new Date(expires_at).getTime() - Date.now();
+    if (diff <= 0) return 'Closing soon';
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    return `${days}d ${hours}h left`;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
@@ -170,6 +180,20 @@ export default function ProductDetailPage() {
 
   const discountedPrice = product.price * (1 - product.discount_percent / 100);
   const savings = product.price - discountedPrice;
+  const freeDelivery = discountedPrice > 499;
+  const sellerName = product.seller_id ? `Seller ${product.seller_id.slice(0, 8)}` : 'Xongle Marketplace';
+  const highlights = product.description
+    ? product.description
+        .split('.')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 4)
+    : [
+        'Fast delivery across India for qualified orders.',
+        'Designed for hassle-free group ordering and savings.',
+        'Secure checkout with reliable customer support.',
+        'Inclusive pricing with no hidden taxes.',
+      ];
 
   return (
     <div className="min-h-screen bg-[#f8faf9]">
@@ -181,102 +205,109 @@ export default function ProductDetailPage() {
           Back
         </button>
 
-        <div className="grid gap-8 lg:grid-cols-2">
-          <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-gray-100">
-            <div className="overflow-hidden rounded-2xl bg-gray-100">
-              {product.image_url ? (
-                <img src={product.image_url} alt={product.name} className="h-[480px] w-full object-cover" />
-              ) : (
-                <div className="flex h-[480px] items-center justify-center text-6xl text-gray-300">📦</div>
+        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-[32px] bg-white p-5 shadow-sm ring-1 ring-gray-100">
+            <div className="relative overflow-hidden rounded-[32px] bg-white p-6">
+              {product.discount_percent > 0 && (
+                <div className="absolute left-6 top-6 rounded-full bg-red-600 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-white shadow-lg">
+                  {product.discount_percent}% OFF
+                </div>
               )}
+              <div className="min-h-[520px] flex items-center justify-center bg-[#f8faf9] p-6">
+                {product.image_url ? (
+                  <img src={product.image_url} alt={product.name} className="max-h-[520px] w-full max-w-[620px] object-contain" />
+                ) : (
+                  <div className="flex h-80 w-full items-center justify-center rounded-3xl bg-gray-100 text-6xl text-gray-300">📦</div>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="space-y-6">
-            <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
+            <div className="rounded-[32px] bg-white p-8 shadow-sm ring-1 ring-gray-100">
               <div className="flex items-center justify-between gap-4">
                 <span className="rounded-full bg-[#1d9e75] px-3 py-1 text-xs font-semibold text-white">{product.category}</span>
-                {product.discount_percent > 0 && (
-                  <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-600">{product.discount_percent}% OFF</span>
-                )}
+                <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-600">{product.discount_percent}% saved</span>
               </div>
 
-              <h1 className="mt-4 text-3xl font-bold text-gray-950 sm:text-4xl">{product.name}</h1>
-              <p className="mt-3 text-base leading-7 text-gray-600">{product.description || 'A premium product available through Xongle group buys.'}</p>
+              <h1 className="mt-4 text-4xl font-bold text-gray-950 sm:text-5xl">{product.name}</h1>
 
-              <div className="mt-5 flex items-center gap-2 text-sm text-gray-500">
-                <div className="flex gap-1 text-yellow-400">
-                  {[...Array(5)].map((_, index) => <Star key={index} className="h-4 w-4 fill-current" />)}
+              <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-gray-600">
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#F4FAF8] px-3 py-1 font-semibold text-[#1d9e75]">4.2 ★</span>
+                <span className="text-sm font-medium text-gray-500">(128 reviews)</span>
+              </div>
+
+              <div className="mt-6 rounded-[28px] bg-[#f0fdf4] p-6">
+                <div className="flex items-end gap-4 flex-wrap">
+                  <p className="text-5xl font-bold leading-none text-[#127A4B]">₹{discountedPrice.toFixed(2)}</p>
+                  <div>
+                    <p className="text-base text-gray-500 line-through">₹{product.price.toFixed(2)}</p>
+                    <span className="mt-2 inline-flex rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-600">{product.discount_percent}% OFF</span>
+                  </div>
                 </div>
-                <span>(128 reviews)</span>
+                <p className="mt-4 text-sm text-gray-600">Inclusive of all taxes</p>
               </div>
 
-              <div className="mt-6 rounded-2xl bg-gradient-to-r from-green-50 to-emerald-100 p-5">
-                <div className="flex items-end gap-3">
-                  <p className="text-4xl font-bold text-[#1d9e75]">₹{discountedPrice.toFixed(2)}</p>
-                  <p className="text-lg text-gray-500 line-through">₹{product.price.toFixed(2)}</p>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[28px] border border-gray-200 bg-white p-4">
+                  <p className="text-sm font-semibold text-[#1d9e75]">{freeDelivery ? 'Free delivery' : 'Standard delivery'}</p>
+                  <p className="mt-1 text-sm text-gray-600">{freeDelivery ? 'Free delivery on orders above ₹499' : 'Expected delivery fee applies'}</p>
                 </div>
-                <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-sm font-semibold text-[#1d9e75]">
-                  <Zap className="h-4 w-4" />
-                  Save ₹{savings.toFixed(2)} with group savings
-                </p>
-              </div>
-
-              <div className="mt-6 flex items-center gap-4">
-                <div className="flex items-center gap-3 rounded-xl border border-gray-200 px-3 py-2">
-                  <button onClick={() => setQuantity((current) => Math.max(1, current - 1))} className="h-8 w-8 rounded-md bg-gray-100 text-lg font-semibold text-gray-700">−</button>
-                  <input type="number" min="1" value={quantity} onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))} className="w-12 border-0 bg-transparent text-center text-sm font-semibold text-gray-900 focus:outline-none" />
-                  <button onClick={() => setQuantity((current) => current + 1)} className="h-8 w-8 rounded-md bg-gray-100 text-lg font-semibold text-gray-700">+</button>
+                <div className="rounded-[28px] border border-gray-200 bg-white p-4">
+                  <p className="text-sm font-semibold text-[#2d2d2d]">Expected delivery</p>
+                  <p className="mt-1 text-sm text-gray-600">3-5 business days</p>
                 </div>
-
-                <div className="rounded-xl bg-green-50 px-3 py-2 text-sm font-semibold text-green-700">Ready for group buying</div>
               </div>
 
-              <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-                <button onClick={handleAddToCart} className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#1d9e75] px-4 py-3 font-semibold text-white transition hover:bg-[#15845f]">
-                  <ShoppingCart className="h-4 w-4" />
+              <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-3 py-2">
+                  <button onClick={() => setQuantity((current) => Math.max(1, current - 1))} className="h-10 w-10 rounded-xl bg-gray-100 text-lg font-semibold text-gray-700">−</button>
+                  <input type="number" min="1" value={quantity} onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))} className="w-16 border-0 bg-transparent text-center text-lg font-semibold text-gray-900 focus:outline-none" />
+                  <button onClick={() => setQuantity((current) => current + 1)} className="h-10 w-10 rounded-xl bg-gray-100 text-lg font-semibold text-gray-700">+</button>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <button onClick={handleAddToCart} className="w-full rounded-2xl bg-[#1d9e75] px-5 py-4 text-center text-base font-semibold text-white transition hover:bg-[#15845f]">
                   Add to Cart
                 </button>
-                <button onClick={handleStartGroupBuy} className="inline-flex items-center justify-center rounded-lg border-2 border-[#1d9e75] px-4 py-3 font-semibold text-[#1d9e75] transition hover:bg-green-50">
+                <button onClick={handleStartGroupBuy} className="w-full rounded-2xl border-2 border-[#1d9e75] bg-white px-5 py-4 text-center text-base font-semibold text-[#1d9e75] transition hover:bg-green-50">
                   {user ? 'Start Group Buy' : 'Sign In to Start Group Buy'}
                 </button>
               </div>
 
               {cartMessage && (
-                <div className="mt-4 flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
-                  <CheckCircle className="h-4 w-4" />
-                  {cartMessage}
+                <div className="mt-4 rounded-2xl bg-green-50 p-4 text-sm font-semibold text-green-700">
+                  <CheckCircle className="inline h-4 w-4 align-text-bottom" /> {cartMessage}
                 </div>
               )}
             </div>
 
-            <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
+            <div className="rounded-[32px] bg-white p-6 shadow-sm ring-1 ring-gray-100">
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#1d9e75]">Active group buys</p>
-                  <h2 className="mt-1 text-xl font-bold text-gray-950">{groupBuys.length} community buys live</h2>
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#1d9e75]">Group buy info</p>
+                  <h2 className="mt-1 text-xl font-bold text-gray-950">{groupBuys.length} active group buys for this product</h2>
                 </div>
-                <Users className="h-5 w-5 text-[#1d9e75]" />
+                <Users className="h-6 w-6 text-[#1d9e75]" />
               </div>
 
               {groupBuys.length === 0 ? (
-                <div className="rounded-xl bg-gray-50 p-4 text-sm text-gray-600">No active group buys yet. Start a new one to invite friends.</div>
+                <div className="rounded-3xl border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
+                  No active group buys yet. Start one to invite friends and save more.
+                </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {groupBuys.slice(0, 4).map((groupBuy) => (
-                    <button
-                      key={groupBuy.id}
-                      onClick={() => handleJoinGroupBuy(groupBuy.id)}
-                      className="flex w-full items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-left transition hover:border-[#1d9e75] hover:bg-green-50"
-                    >
+                    <div key={groupBuy.id} className="flex flex-col gap-3 rounded-3xl border border-gray-200 bg-[#f8faf9] p-5 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <p className="font-semibold text-gray-950">{groupBuy.member_count} people joined</p>
-                        <p className="mt-1 text-xs text-gray-500">
-                          {groupBuy.expires_at ? `${Math.ceil((new Date(groupBuy.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))}d left` : 'Permanent group'}
-                        </p>
+                        <p className="text-base font-semibold text-gray-950">{groupBuy.member_count} members joined</p>
+                        <p className="mt-1 text-sm text-gray-600">{formatTimeLeft(groupBuy.expires_at)}</p>
                       </div>
-                      <span className="rounded-full bg-[#1d9e75] px-3 py-1 text-xs font-bold text-white">Join</span>
-                    </button>
+                      <button onClick={() => handleJoinGroupBuy(groupBuy.id)} className="rounded-full bg-[#1d9e75] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#15845f]">
+                        Join
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -284,7 +315,36 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        <section className="mt-10 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
+        <section className="mt-10 grid gap-8 lg:grid-cols-[1fr_320px]">
+          <div className="rounded-[32px] bg-white p-8 shadow-sm ring-1 ring-gray-100">
+            <h2 className="text-2xl font-bold text-gray-950">Product description</h2>
+            <p className="mt-4 text-gray-600 leading-7">{product.description || 'A premium product available through Xongle group buys with quality assurance and fast delivery.'}</p>
+
+            <div className="mt-8">
+              <h3 className="text-xl font-semibold text-gray-950">Key highlights</h3>
+              <ul className="mt-4 space-y-3 list-disc pl-5 text-gray-600">
+                {highlights.map((highlight, index) => (
+                  <li key={index}>{highlight}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <aside className="space-y-6">
+            <div className="rounded-[32px] bg-white p-6 shadow-sm ring-1 ring-gray-100">
+              <h3 className="text-xl font-semibold text-gray-950">Seller info</h3>
+              <p className="mt-4 text-sm text-gray-600">Sold by <span className="font-semibold text-gray-900">{sellerName}</span></p>
+              <p className="mt-3 text-sm text-gray-600">Reliable shipping from trusted partners, 30-day returns, and secure payment.</p>
+              <div className="mt-5 space-y-3 rounded-3xl bg-[#F4FAF8] p-4 text-sm text-gray-700">
+                <p className="font-semibold text-[#1d9e75]">Why buy from us</p>
+                <p>Fast dispatch and safe delivery.</p>
+                <p>Verified group purchase support.</p>
+              </div>
+            </div>
+          </aside>
+        </section>
+
+        <section className="mt-10 rounded-[32px] bg-white p-6 shadow-sm ring-1 ring-gray-100">
           <div className="mb-5 flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#1d9e75]">Related products</p>
@@ -301,7 +361,7 @@ export default function ProductDetailPage() {
                 const relatedDiscountedPrice = item.price * (1 - item.discount_percent / 100);
 
                 return (
-                  <Link key={item.id} href={`/products/${item.id}`} className="overflow-hidden rounded-2xl border border-gray-100 transition hover:-translate-y-0.5 hover:shadow-lg">
+                  <Link key={item.id} href={`/products/${item.id}`} className="overflow-hidden rounded-3xl border border-gray-100 transition hover:-translate-y-0.5 hover:shadow-lg">
                     <div className="h-40 bg-gray-100">
                       {item.image_url ? <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-4xl">📦</div>}
                     </div>
