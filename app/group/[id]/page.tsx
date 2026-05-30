@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Navbar from '@/app/components/Navbar';
 import { supabase } from '@/app/lib/supabase';
-import { Users, Check, Share2 } from 'lucide-react';
+import { Users, Check, Share2, Clock } from 'lucide-react';
 
 interface GroupBuy {
   id: string;
@@ -12,7 +12,7 @@ interface GroupBuy {
   creator_id: string;
   status: string;
   member_count: number;
-  expires_at: string;
+  expires_at: string | null;
 }
 
 interface Product {
@@ -29,6 +29,7 @@ interface GroupMember {
   id: string;
   user_id: string;
   joined_at: string;
+  is_ready: boolean;
 }
 
 export default function GroupBuyPage() {
@@ -43,6 +44,8 @@ export default function GroupBuyPage() {
   const [user, setUser] = useState<any>(null);
   const [timeLeft, setTimeLeft] = useState('');
   const [joining, setJoining] = useState(false);
+  const [placingOrders, setPlacingOrders] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
 
   const groupBuyId = params.id as string;
 
@@ -116,6 +119,11 @@ export default function GroupBuyPage() {
     if (!groupBuy) return;
 
     const updateTimer = () => {
+      if (!groupBuy.expires_at) {
+        setTimeLeft('Permanent');
+        return;
+      }
+
       const expiresAt = new Date(groupBuy.expires_at).getTime();
       const now = Date.now();
       const difference = expiresAt - now;
@@ -149,11 +157,13 @@ export default function GroupBuyPage() {
 
     try {
       setJoining(true);
+      setError('');
 
       const { error } = await supabase.from('group_members').insert([
         {
           group_buy_id: groupBuyId,
           user_id: user.id,
+          is_ready: false,
         },
       ]);
 
@@ -163,11 +173,13 @@ export default function GroupBuyPage() {
 
       setJoined(true);
 
-      // Refresh member count
-      const { data: membersData } = await supabase
+      // Refresh member list and count
+      const { data: membersData, error: membersError } = await supabase
         .from('group_members')
         .select('*')
         .eq('group_buy_id', groupBuyId);
+
+      if (membersError) throw membersError;
 
       setMembers(membersData || []);
 
@@ -182,6 +194,79 @@ export default function GroupBuyPage() {
       setError('Failed to join group buy. Please try again.');
     } finally {
       setJoining(false);
+    }
+  };
+
+  const handleReadyToOrder = async () => {
+    if (!user || !groupBuy || !product) return;
+
+    try {
+      setPlacingOrders(true);
+      setError('');
+      setStatusMessage('');
+
+      const { error: readyError } = await supabase
+        .from('group_members')
+        .update({ is_ready: true })
+        .eq('group_buy_id', groupBuyId)
+        .eq('user_id', user.id);
+
+      if (readyError) throw readyError;
+
+      const { data: refreshedMembers, error: membersError } = await supabase
+        .from('group_members')
+        .select('*')
+        .eq('group_buy_id', groupBuyId);
+
+      if (membersError) throw membersError;
+
+      const membersList = refreshedMembers || [];
+      setMembers(membersList);
+
+      const readyCount = membersList.filter((member) => member.is_ready).length;
+      const allReady = membersList.length > 0 && readyCount === membersList.length;
+
+      if (allReady) {
+        const { data: existingOrders, error: existingOrdersError } = await supabase
+          .from('orders')
+          .select('user_id')
+          .eq('group_buy_id', groupBuyId);
+
+        if (existingOrdersError) throw existingOrdersError;
+
+        const existingUserIds = new Set((existingOrders || []).map((order) => order.user_id));
+
+        const orderRows = membersList
+          .filter((member) => !existingUserIds.has(member.user_id))
+          .map((member) => ({
+            user_id: member.user_id,
+            product_id: product.id,
+            group_buy_id: groupBuyId,
+            amount: product.price * (1 - product.discount_percent / 100),
+            status: 'pending',
+          }));
+
+        if (orderRows.length > 0) {
+          const { error: orderInsertError } = await supabase.from('orders').insert(orderRows);
+          if (orderInsertError) throw orderInsertError;
+        }
+
+        const { error: updateGroupError } = await supabase
+          .from('group_buys')
+          .update({ status: 'completed' })
+          .eq('id', groupBuyId);
+
+        if (updateGroupError) throw updateGroupError;
+
+        setStatusMessage('🎉 All members ready! Order is being placed...');
+      } else {
+        setStatusMessage('Your ready status is saved. Waiting for the rest of the group.');
+      }
+    } catch (err) {
+      console.error('Error updating ready status:', err);
+      setError('Failed to update ready status. Please try again.');
+    } finally {
+      setPlacingOrders(false);
     }
   };
 
@@ -232,6 +317,8 @@ export default function GroupBuyPage() {
 
   const discountedPrice = product.price * (1 - product.discount_percent / 100);
   const savings = product.price - discountedPrice;
+  const readyCount = members.filter((member) => member.is_ready).length;
+  const allReady = members.length > 0 && readyCount === members.length;
   const maxMembers = 50; // Visual max for progress bar
   const progressPercent = Math.min((members.length / maxMembers) * 100, 100);
 
@@ -313,11 +400,11 @@ export default function GroupBuyPage() {
                       key={member.id}
                       className="flex flex-col items-center text-center"
                     >
-                      <div className="w-12 h-12 bg-gradient-to-br from-[#1d9e75] to-[#085041] rounded-full flex items-center justify-center text-white font-bold text-lg mb-2">
-                        {idx + 1}
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg mb-2" style={{ backgroundColor: member.is_ready ? '#1d9e75' : '#d1d5db' }}>
+                        {member.is_ready ? <Check className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
                       </div>
                       <p className="text-xs text-gray-600 truncate">
-                        Member {idx + 1}
+                        Member {idx + 1} • {member.is_ready ? 'Ready' : 'Not ready'}
                       </p>
                     </div>
                   ))}
@@ -362,11 +449,34 @@ export default function GroupBuyPage() {
                 </p>
               </div>
 
-              {/* Join Button */}
               {joined ? (
-                <div className="w-full bg-green-100 text-green-700 font-semibold py-4 rounded-xl flex items-center justify-center gap-2 border-2 border-green-300">
-                  <Check className="w-5 h-5" />
-                  You've Joined!
+                <div className="space-y-4">
+                  <div className="rounded-2xl bg-green-50 p-4">
+                    <p className="text-sm text-gray-600">Ready status</p>
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <p className="text-lg font-semibold text-gray-900">
+                        {readyCount}/{members.length} ready
+                      </p>
+                      <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold ${allReady ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}`}>
+                        {allReady ? <Check className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                        {allReady ? 'All members ready' : 'Waiting for members'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleReadyToOrder}
+                    disabled={placingOrders || allReady}
+                    className={`w-full rounded-xl py-4 text-lg font-bold transition ${allReady ? 'bg-green-100 text-green-700 border border-green-300 cursor-default' : 'bg-[#1d9e75] hover:bg-[#085041] text-white disabled:opacity-50'}`}
+                  >
+                    {allReady ? '✓ You’re Ready!' : placingOrders ? 'Saving...' : "I'm Ready to Order!"}
+                  </button>
+
+                  {statusMessage && (
+                    <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700">
+                      {statusMessage}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <button
@@ -381,7 +491,7 @@ export default function GroupBuyPage() {
               {/* WhatsApp Share Button - PROMINENT */}
               <button
                 onClick={handleWhatsAppShare}
-                className="w-full bg-[#25D366] hover:bg-[#1ebd59] text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transform hover:scale-105 transition-transform"
+                className="w-full bg-[#25D366] hover:bg-[#1ebd59] text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transform hover:scale-105"
               >
                 <Share2 className="w-5 h-5" />
                 Share on WhatsApp

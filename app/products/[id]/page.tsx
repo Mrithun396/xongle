@@ -271,7 +271,9 @@ export default function ProductDetailPage() {
                     >
                       <div>
                         <p className="font-semibold text-gray-950">{groupBuy.member_count} people joined</p>
-                        <p className="mt-1 text-xs text-gray-500">Open group to join and share your savings</p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {groupBuy.expires_at ? `${Math.ceil((new Date(groupBuy.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))}d left` : 'Permanent group'}
+                        </p>
                       </div>
                       <span className="rounded-full bg-[#1d9e75] px-3 py-1 text-xs font-bold text-white">Join</span>
                     </button>

@@ -47,10 +47,10 @@ CREATE TABLE products (
 CREATE TABLE group_buys (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-  creator_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  creator_id UUID NOT NULL,
   status group_buy_status DEFAULT 'active',
   member_count INTEGER DEFAULT 0,
-  expires_at TIMESTAMP NOT NULL,
+  expires_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -59,8 +59,9 @@ CREATE TABLE group_buys (
 CREATE TABLE group_members (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   group_buy_id UUID NOT NULL REFERENCES group_buys(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL,
   joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  is_ready BOOLEAN DEFAULT FALSE,
   UNIQUE(group_buy_id, user_id)
 );
 

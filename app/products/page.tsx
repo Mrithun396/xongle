@@ -35,7 +35,7 @@ interface GroupBuy {
 }
 
 interface ProductWithGroupBuy extends Product {
-  activeGroupBuy?: GroupBuy;
+  activeGroupBuyCount?: number;
 }
 
 const CATEGORY_OPTIONS = ['All', 'Grocery', 'Electronics', 'Fashion', 'Home'];
@@ -96,10 +96,10 @@ export default function ProductsPage() {
         if (groupBuysError) throw groupBuysError;
 
         const productsWithGroupBuys = (productsData || []).map((product) => {
-          const activeGroupBuy = (groupBuysData || []).find((gb) => gb.product_id === product.id);
+          const activeGroupBuyCount = (groupBuysData || []).filter((gb) => gb.product_id === product.id).length;
           return {
             ...product,
-            activeGroupBuy,
+            activeGroupBuyCount,
           };
         });
 
@@ -139,12 +139,12 @@ export default function ProductsPage() {
     return sorted;
   }, [products, selectedCategory, priceFilter, searchQuery, sortBy]);
 
-  const handleJoinGroupBuy = (groupBuyId: string) => {
+  const handleJoinGroupBuy = (productId: string) => {
     if (!user) {
-      router.push(`/login?redirect=/group/${groupBuyId}`);
+      router.push(`/login?redirect=/products/${productId}`);
       return;
     }
-    router.push(`/group/${groupBuyId}`);
+    router.push(`/products/${productId}`);
   };
 
   const handleStartGroupBuy = (productId: string) => {
@@ -309,8 +309,7 @@ export default function ProductsPage() {
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {filteredProducts.map((product) => {
                   const discountedPrice = product.price * (1 - product.discount_percent / 100);
-                  const activeGroupBuy = product.activeGroupBuy;
-                  const hasGroupBuy = Boolean(activeGroupBuy);
+                  const hasGroupBuy = Boolean(product.activeGroupBuyCount);
 
                   return (
                     <article key={product.id} className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-[0_1px_6px_rgba(0,0,0,0.08)] transition-shadow duration-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
@@ -342,10 +341,14 @@ export default function ProductsPage() {
                           <span>4.2</span>
                         </div>
 
-                        {hasGroupBuy && activeGroupBuy && (
+                        {product.activeGroupBuyCount ? (
                           <div className="mt-3 flex items-center gap-2 rounded-xl bg-[#F4FAF8] px-3 py-2 text-xs font-semibold text-[#1D9E75]">
                             <Users className="h-3.5 w-3.5" />
-                            {activeGroupBuy.member_count} people joined
+                            {product.activeGroupBuyCount} active group{product.activeGroupBuyCount !== 1 ? 's' : ''}
+                          </div>
+                        ) : (
+                          <div className="mt-3 rounded-xl bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-600">
+                            No active groups yet
                           </div>
                         )}
 
@@ -359,10 +362,10 @@ export default function ProductsPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => hasGroupBuy && activeGroupBuy ? handleJoinGroupBuy(activeGroupBuy.id) : handleStartGroupBuy(product.id)}
-                            className="rounded-xl border border-[#1D9E75] bg-white px-3 py-2.5 text-xs font-bold text-[#1D9E75] transition hover:bg-emerald-50"
+                            onClick={() => product.activeGroupBuyCount ? handleJoinGroupBuy(product.id) : handleStartGroupBuy(product.id)}
+                            className="rounded-xl border border-[#1d9e75] bg-white px-3 py-2.5 text-xs font-bold text-[#1d9e75] transition hover:bg-emerald-50"
                           >
-                            Group Buy
+                            {product.activeGroupBuyCount ? 'View Groups' : 'Start Group'}
                           </button>
                         </div>
 

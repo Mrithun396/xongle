@@ -73,8 +73,14 @@ export default function StartGroupPage() {
       setCreating(true);
       setError('');
 
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + parseInt(expiresIn));
+      const authUserId = user.id;
+      const expiresAt = expiresIn === 'permanent' ? null : new Date(Date.now() + parseInt(expiresIn) * 24 * 60 * 60 * 1000);
+
+      console.log('Creating group buy', {
+        authUserId,
+        productId: product.id,
+        expiresAt: expiresAt ? expiresAt.toISOString() : null,
+      });
 
       // Create group buy
       const { data: groupBuyData, error: gbError } = await supabase
@@ -82,16 +88,23 @@ export default function StartGroupPage() {
         .insert([
           {
             product_id: product.id,
-            creator_id: user.id,
+            creator_id: authUserId,
             status: 'active',
             member_count: 1,
-            expires_at: expiresAt.toISOString(),
+            expires_at: expiresAt ? expiresAt.toISOString() : null,
           },
         ])
         .select()
         .single();
 
-      if (gbError) throw gbError;
+      if (gbError) {
+        console.error('Group buy insert error:', gbError, {
+          authUserId,
+          productId: product.id,
+          expiresAt,
+        });
+        throw gbError;
+      }
 
       // Add creator as first member
       const { error: memberError } = await supabase
@@ -99,11 +112,18 @@ export default function StartGroupPage() {
         .insert([
           {
             group_buy_id: groupBuyData.id,
-            user_id: user.id,
+            user_id: authUserId,
+            is_ready: false,
           },
         ]);
 
-      if (memberError) throw memberError;
+      if (memberError) {
+        console.error('Group member insert error:', memberError, {
+          authUserId,
+          groupBuyId: groupBuyData.id,
+        });
+        throw memberError;
+      }
 
       // Redirect to group page
       router.push(`/group/${groupBuyData.id}`);
@@ -263,6 +283,7 @@ export default function StartGroupPage() {
                   <option value="7">7 Days</option>
                   <option value="14">14 Days</option>
                   <option value="30">30 Days</option>
+                  <option value="permanent">Permanent (No expiry)</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-2">
                   Group will automatically close after this period
