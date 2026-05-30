@@ -125,10 +125,7 @@ export default function GroupBuyDetailPage() {
       // Refresh member count
       const { data: membersData } = await supabase
         .from('group_members')
-        .select('user_id')
-        .eq('group_buy_id', groupBuyId);
-
-      setMembers(membersData || []);
+          .select('user_id, joined_at')
 
       if (groupBuy) {
         setGroupBuy({

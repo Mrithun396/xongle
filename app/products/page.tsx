@@ -1,10 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Navbar from '@/app/components/Navbar';
 import { supabase } from '@/app/lib/supabase';
-import { ShoppingCart, Users, Filter } from 'lucide-react';
-import Image from 'next/image';
+import { useCart } from '@/app/context/CartContext';
+import {
+  CheckCircle2,
+  Filter,
+  Search,
+  ShoppingCart,
+  Sparkles,
+  Star,
+  Users,
+} from 'lucide-react';
 
 interface Product {
   id: string;
@@ -15,6 +24,7 @@ interface Product {
   category: string;
   discount_percent: number;
   seller_id: string;
+  created_at?: string | null;
 }
 
 interface GroupBuy {
@@ -28,7 +38,13 @@ interface ProductWithGroupBuy extends Product {
   activeGroupBuy?: GroupBuy;
 }
 
-const CATEGORIES = ['All', 'Grocery', 'Electronics', 'Fashion', 'Home'];
+const CATEGORY_OPTIONS = ['All', 'Grocery', 'Electronics', 'Fashion', 'Home'];
+const PRICE_FILTERS = [
+  { label: 'All', value: 'all' },
+  { label: '₹0 - ₹500', value: '0-500' },
+  { label: '₹500 - ₹1000', value: '500-1000' },
+  { label: '₹1000+', value: '1000+' },
+];
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -36,29 +52,35 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [priceFilter, setPriceFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('featured');
   const [user, setUser] = useState<any>(null);
+  const [cartMessage, setCartMessage] = useState<{ [key: string]: string }>({});
+  const { addToCart } = useCart();
 
-  // Check authentication
   useEffect(() => {
     const checkAuth = async () => {
       const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        router.push('/login');
-        return;
-      }
-      setUser(data.session.user);
+      setUser(data.session?.user || null);
     };
     checkAuth();
-  }, [router]);
+  }, []);
 
-  // Fetch products and group buys
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const q = new URLSearchParams(window.location.search).get('q');
+    const categoryParam = new URLSearchParams(window.location.search).get('category');
+    if (q) setSearchQuery(q);
+    if (categoryParam) setSelectedCategory(categoryParam);
+  }, []);
+
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
         setError('');
 
-        // Fetch active products
         const { data: productsData, error: productsError } = await supabase
           .from('products')
           .select('*')
@@ -66,7 +88,6 @@ export default function ProductsPage() {
 
         if (productsError) throw productsError;
 
-        // Fetch active group buys
         const { data: groupBuysData, error: groupBuysError } = await supabase
           .from('group_buys')
           .select('*')
@@ -74,11 +95,8 @@ export default function ProductsPage() {
 
         if (groupBuysError) throw groupBuysError;
 
-        // Combine data - add active group buy info to each product
-        const productsWithGroupBuys = productsData.map((product) => {
-          const activeGroupBuy = groupBuysData?.find(
-            (gb) => gb.product_id === product.id
-          );
+        const productsWithGroupBuys = (productsData || []).map((product) => {
+          const activeGroupBuy = (groupBuysData || []).find((gb) => gb.product_id === product.id);
           return {
             ...product,
             activeGroupBuy,
@@ -94,46 +112,75 @@ export default function ProductsPage() {
       }
     };
 
-    if (user) {
-      fetchProducts();
-    }
-  }, [user]);
+    fetchProducts();
+  }, []);
 
-  // Filter products by category
-  const filteredProducts = products.filter((product) => {
-    if (selectedCategory === 'All') return true;
-    return product.category.toLowerCase() === selectedCategory.toLowerCase();
-  });
+  const filteredProducts = useMemo(() => {
+    const filtered = products.filter((product) => {
+      const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
+      const matchesSearch = !searchQuery || [product.name, product.description].filter(Boolean).some((value) => value?.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      let matchesPrice = true;
+      const discountedPrice = product.price * (1 - product.discount_percent / 100);
+      if (priceFilter === '0-500') matchesPrice = discountedPrice <= 500;
+      if (priceFilter === '500-1000') matchesPrice = discountedPrice >= 500 && discountedPrice <= 1000;
+      if (priceFilter === '1000+') matchesPrice = discountedPrice >= 1000;
+
+      return matchesCategory && matchesSearch && matchesPrice;
+    });
+
+    const sorted = [...filtered].sort((a, b) => {
+      if (sortBy === 'price-low') return (a.price * (1 - a.discount_percent / 100)) - (b.price * (1 - b.discount_percent / 100));
+      if (sortBy === 'price-high') return (b.price * (1 - b.discount_percent / 100)) - (a.price * (1 - a.discount_percent / 100));
+      if (sortBy === 'newest') return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      return (b.discount_percent || 0) - (a.discount_percent || 0);
+    });
+
+    return sorted;
+  }, [products, selectedCategory, priceFilter, searchQuery, sortBy]);
 
   const handleJoinGroupBuy = (groupBuyId: string) => {
+    if (!user) {
+      router.push(`/login?redirect=/group/${groupBuyId}`);
+      return;
+    }
     router.push(`/group/${groupBuyId}`);
   };
 
   const handleStartGroupBuy = (productId: string) => {
+    if (!user) {
+      router.push(`/login?redirect=/start-group/${productId}`);
+      return;
+    }
     router.push(`/start-group/${productId}`);
+  };
+
+  const handleAddToCart = (product: Product) => {
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image_url: product.image_url,
+      discount_percent: product.discount_percent,
+    });
+
+    setCartMessage((current) => ({ ...current, [product.id]: 'Added to cart!' }));
+    setTimeout(() => {
+      setCartMessage((current) => ({ ...current, [product.id]: '' }));
+    }, 2000);
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-white to-green-50">
-        {/* Navigation */}
-        <nav className="bg-white border-b border-gray-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-[#1d9e75] rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold">X</span>
-                </div>
-                <span className="font-bold text-lg text-gray-900">Xongle</span>
-              </div>
-            </div>
-          </div>
-        </nav>
-
-        {/* Loading State */}
-        <div className="flex items-center justify-center min-h-[400px]">
+      <div className="min-h-screen bg-[#F6F6F6]">
+        <Navbar showSearch={true} onSearch={handleSearch} />
+        <div className="mx-auto flex min-h-[400px] max-w-7xl items-center justify-center px-4 py-10 sm:px-6 lg:px-8">
           <div className="text-center">
-            <div className="w-12 h-12 border-4 border-[#1d9e75] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-[#1D9E75] border-t-transparent" />
             <p className="text-gray-600">Loading products...</p>
           </div>
         </div>
@@ -142,184 +189,194 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white to-green-50">
-      {/* Navigation */}
-      <nav className="bg-white border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-[#1d9e75] rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">X</span>
+    <div className="min-h-screen bg-[#F0F0F0] text-[#2D2D2D]">
+      <Navbar showSearch={true} onSearch={handleSearch} />
+
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-black/5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#1D9E75]">Shop curated deals</p>
+              <h1 className="mt-2 text-3xl font-bold text-[#2D2D2D] sm:text-4xl">Premium products for every group buy</h1>
+              <p className="mt-2 max-w-2xl text-sm text-gray-600">
+                Filter by category, compare prices, and join community deals with one click.
+              </p>
+            </div>
+
+            <div className="w-full max-w-sm rounded-2xl bg-[#F6F6F6] p-3">
+              <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-sm">
+                <Search className="h-4 w-4 text-[#1D9E75]" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search products"
+                  className="w-full bg-transparent text-sm text-[#2D2D2D] outline-none"
+                />
               </div>
-              <span className="font-bold text-lg text-gray-900">Xongle</span>
-            </div>
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="px-4 py-2 text-gray-600 hover:text-[#1d9e75] transition-colors"
-            >
-              Dashboard
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
-            Browse Products
-          </h1>
-          <p className="text-gray-600">
-            {filteredProducts.length} {selectedCategory === 'All' ? 'products' : `${selectedCategory.toLowerCase()} products`} available
-          </p>
-        </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg">
-            {error}
-          </div>
-        )}
-
-        {/* Category Filter Tabs */}
-        <div className="mb-8 flex gap-2 overflow-x-auto pb-2 sm:pb-0">
-          {CATEGORIES.map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`px-4 py-2 rounded-full font-medium transition-all whitespace-nowrap ${
-                selectedCategory === category
-                  ? 'bg-[#1d9e75] text-white shadow-md'
-                  : 'bg-white text-gray-700 border border-gray-200 hover:border-[#1d9e75]'
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
-
-        {/* Products Grid */}
-        {filteredProducts.length === 0 ? (
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <Filter className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600 text-lg">No products found in this category</p>
-              <p className="text-gray-500 text-sm mt-2">Try selecting a different category</p>
             </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => {
-              const discountedPrice = product.price * (1 - product.discount_percent / 100);
+        </div>
 
-              return (
-                <div
-                  key={product.id}
-                  className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-shadow border border-gray-100 overflow-hidden flex flex-col"
+        {error && <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+
+        <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <aside className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5 lg:sticky lg:top-24 lg:h-fit">
+            <div className="flex items-center gap-2">
+              <div className="rounded-xl bg-[#F4FAF8] p-2 text-[#1D9E75]">
+                <Filter className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-base font-bold text-[#2D2D2D]">Filters</p>
+                <p className="text-xs text-gray-500">Refine your savings</p>
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1D9E75]">Niche</p>
+              <div className="mt-3 space-y-2">
+                {CATEGORY_OPTIONS.map((category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => setSelectedCategory(category)}
+                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition ${selectedCategory === category ? 'bg-[#1D9E75] text-white' : 'bg-[#F6F6F6] text-[#2D2D2D] hover:bg-[#E8F6F0]'}`}
+                  >
+                    <span>{category}</span>
+                    {selectedCategory === category && <CheckCircle2 className="h-4 w-4" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#1D9E75]">Price range</p>
+              <div className="mt-3 space-y-2">
+                {PRICE_FILTERS.map((filter) => (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    onClick={() => setPriceFilter(filter.value)}
+                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition ${priceFilter === filter.value ? 'bg-[#FF6161] text-white' : 'bg-[#F6F6F6] text-[#2D2D2D] hover:bg-[#FFE8E8]'}`}
+                  >
+                    <span>{filter.label}</span>
+                    {priceFilter === filter.value && <CheckCircle2 className="h-4 w-4" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl bg-[#F8FBFA] p-4 ring-1 ring-[#E2EEE8]">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-[#1D9E75]" />
+                <p className="text-sm font-bold text-[#2D2D2D]">Smart ordering</p>
+              </div>
+              <p className="mt-2 text-xs text-gray-600">Join active communities, compare prices instantly, and unlock better deals with group buying.</p>
+            </div>
+          </aside>
+
+          <section>
+            <div className="mb-4 flex flex-col gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm font-bold text-[#2D2D2D]">{filteredProducts.length} products available</p>
+                <p className="text-xs text-gray-500">
+                  {searchQuery ? `Showing results for "${searchQuery}"` : 'Browse curated bundles and seasonal offers'}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">Sort</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="rounded-xl border border-[#D8E8E3] bg-[#F8FBFA] px-3 py-2 text-sm text-[#2D2D2D] outline-none"
                 >
-                  {/* Product Image */}
-                  <div className="relative w-full h-48 bg-gray-100 overflow-hidden group">
-                    {product.image_url ? (
-                      <Image
-                        src={product.image_url}
-                        alt={product.name}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <ShoppingCart className="w-12 h-12 text-gray-300" />
-                      </div>
-                    )}
+                  <option value="featured">Featured</option>
+                  <option value="price-low">Price: Low to High</option>
+                  <option value="price-high">Price: High to Low</option>
+                  <option value="newest">Newest</option>
+                </select>
+              </div>
+            </div>
 
-                    {/* Discount Badge */}
-                    {product.discount_percent > 0 && (
-                      <div className="absolute top-3 right-3 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                        {product.discount_percent}% OFF
-                      </div>
-                    )}
+            {filteredProducts.length === 0 ? (
+              <div className="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-black/5">
+                <Filter className="mx-auto h-12 w-12 text-gray-300" />
+                <p className="mt-4 text-lg font-bold text-[#2D2D2D]">No products matched</p>
+                <p className="mt-1 text-sm text-gray-500">Try adjusting your filters or search terms.</p>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {filteredProducts.map((product) => {
+                  const discountedPrice = product.price * (1 - product.discount_percent / 100);
+                  const activeGroupBuy = product.activeGroupBuy;
+                  const hasGroupBuy = Boolean(activeGroupBuy);
 
-                    {/* Category Badge */}
-                    <div className="absolute top-3 left-3 bg-[#1d9e75] text-white px-3 py-1 rounded-full text-xs font-semibold">
-                      {product.category}
-                    </div>
-                  </div>
-
-                  {/* Product Info */}
-                  <div className="p-4 flex-1 flex flex-col">
-                    {/* Name */}
-                    <h3 className="font-semibold text-gray-900 text-sm sm:text-base mb-1 line-clamp-2">
-                      {product.name}
-                    </h3>
-
-                    {/* Description */}
-                    {product.description && (
-                      <p className="text-gray-500 text-xs sm:text-sm mb-3 line-clamp-2">
-                        {product.description}
-                      </p>
-                    )}
-
-                    {/* Pricing */}
-                    <div className="mb-3 flex items-center gap-2">
-                      <div>
-                        <div className="text-lg sm:text-xl font-bold text-[#1d9e75]">
-                          ₹{discountedPrice.toFixed(2)}
-                        </div>
-                        {product.discount_percent > 0 && (
-                          <div className="text-xs text-gray-500 line-through">
-                            ₹{product.price.toFixed(2)}
-                          </div>
+                  return (
+                    <article key={product.id} className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-[0_1px_6px_rgba(0,0,0,0.08)] transition-shadow duration-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+                      <div className="relative aspect-[4/5] bg-[#F6F6F6]">
+                        {product.image_url ? (
+                          <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-5xl">📦</div>
                         )}
                       </div>
-                    </div>
 
-                    {/* Group Buy Info */}
-                    {product.activeGroupBuy && (
-                      <div className="flex items-center gap-1 text-sm text-[#1d9e75] mb-4 bg-green-50 px-3 py-2 rounded-lg">
-                        <Users className="w-4 h-4" />
-                        <span className="font-semibold">{product.activeGroupBuy.member_count} people</span>
-                        <span className="text-gray-600">joined</span>
+                      <div className="flex flex-1 flex-col p-4">
+                        <h2 className="text-sm font-semibold leading-snug text-[#2D2D2D] line-clamp-2">{product.name}</h2>
+
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <p className="text-base font-bold text-[#1D9E75]">₹{discountedPrice.toFixed(2)}</p>
+                            {product.discount_percent > 0 && <p className="text-xs text-gray-400 line-through">₹{product.price.toFixed(2)}</p>}
+                          </div>
+                          {product.discount_percent > 0 && (
+                            <span className="rounded-full bg-[#FFF1F0] px-2 py-1 text-[10px] font-bold text-[#FF6161]">
+                              {product.discount_percent}% off
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-2 flex items-center gap-1 text-xs font-medium text-[#6B7280]">
+                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                          <span>4.2</span>
+                        </div>
+
+                        {hasGroupBuy && activeGroupBuy && (
+                          <div className="mt-3 flex items-center gap-2 rounded-xl bg-[#F4FAF8] px-3 py-2 text-xs font-semibold text-[#1D9E75]">
+                            <Users className="h-3.5 w-3.5" />
+                            {activeGroupBuy.member_count} people joined
+                          </div>
+                        )}
+
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleAddToCart(product)}
+                            className="rounded-xl bg-[#1D9E75] px-3 py-2.5 text-xs font-bold text-white transition hover:bg-[#15845f]"
+                          >
+                            Add to Cart
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => hasGroupBuy && activeGroupBuy ? handleJoinGroupBuy(activeGroupBuy.id) : handleStartGroupBuy(product.id)}
+                            className="rounded-xl border border-[#1D9E75] bg-white px-3 py-2.5 text-xs font-bold text-[#1D9E75] transition hover:bg-emerald-50"
+                          >
+                            Group Buy
+                          </button>
+                        </div>
+
+                        {cartMessage[product.id] && (
+                          <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-[#1D9E75]">{cartMessage[product.id]}</p>
+                        )}
                       </div>
-                    )}
-
-                    {/* Buttons */}
-                    <div className="flex gap-2 mt-auto">
-                      {product.activeGroupBuy ? (
-                        <>
-                          <button
-                            onClick={() =>
-                              handleJoinGroupBuy(
-                                product.activeGroupBuy!.id
-                              )
-                            }
-                            className="flex-1 bg-[#1d9e75] hover:bg-[#085041] text-white font-semibold py-2 rounded-lg transition-colors text-sm"
-                          >
-                            Join Group Buy
-                          </button>
-                          <button
-                            onClick={() => handleStartGroupBuy(product.id)}
-                            className="flex-1 border-2 border-[#1d9e75] text-[#1d9e75] hover:bg-green-50 font-semibold py-2 rounded-lg transition-colors text-sm"
-                          >
-                            Start New
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => handleStartGroupBuy(product.id)}
-                          className="w-full bg-[#1d9e75] hover:bg-[#085041] text-white font-semibold py-2 rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
-                        >
-                          <ShoppingCart className="w-4 h-4" />
-                          Start Group Buy
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
       </div>
     </div>
   );

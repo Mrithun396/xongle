@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import Navbar from '@/app/components/Navbar';
 import { supabase } from '@/app/lib/supabase';
-import { ArrowLeft, Calendar, Users, Zap } from 'lucide-react';
+import { Calendar, Users, Zap, AlertCircle } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -117,18 +118,7 @@ export default function StartGroupPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-white to-green-50">
-        <nav className="bg-white border-b border-gray-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center h-16">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-[#1d9e75] rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold">X</span>
-                </div>
-                <span className="font-bold text-lg text-gray-900">Xongle</span>
-              </div>
-            </div>
-          </div>
-        </nav>
+        <Navbar showSearch={false} />
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="w-12 h-12 border-4 border-[#1d9e75] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -142,25 +132,14 @@ export default function StartGroupPage() {
   if (error || !product) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-white to-green-50">
-        <nav className="bg-white border-b border-gray-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <button
-                onClick={() => router.back()}
-                className="flex items-center gap-2 text-[#1d9e75] hover:text-[#085041]"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                Back
-              </button>
-            </div>
-          </div>
-        </nav>
+        <Navbar showSearch={false} />
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <p className="text-gray-600 text-lg">{error || 'Product not found'}</p>
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <p className="text-gray-600 text-lg mb-4">{error || 'Product not found'}</p>
             <button
               onClick={() => router.push('/products')}
-              className="mt-4 px-6 py-2 bg-[#1d9e75] text-white rounded-lg hover:bg-[#085041]"
+              className="px-6 py-2 bg-[#1d9e75] text-white rounded-lg hover:bg-[#085041]"
             >
               Back to Products
             </button>
@@ -175,27 +154,7 @@ export default function StartGroupPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white to-green-50">
-      {/* Navigation */}
-      <nav className="bg-white border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <button
-              onClick={() => router.back()}
-              className="flex items-center gap-2 text-[#1d9e75] hover:text-[#085041] font-semibold"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              Back
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-[#1d9e75] rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">X</span>
-              </div>
-              <span className="font-bold text-lg text-gray-900">Xongle</span>
-            </div>
-            <div className="w-20"></div>
-          </div>
-        </div>
-      </nav>
+      <Navbar showSearch={false} />
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
