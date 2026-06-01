@@ -61,7 +61,13 @@ export default function Home() {
   const [categoryProducts, setCategoryProducts] = useState<Record<string, ProductCard[]>>({});
   const [activeGroupBuys, setActiveGroupBuys] = useState<GroupBuyCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showSkeleton, setShowSkeleton] = useState(true);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const skeletonTimer = window.setTimeout(() => setShowSkeleton(false), 1000);
+    return () => window.clearTimeout(skeletonTimer);
+  }, []);
 
   useEffect(() => {
     const loadHomeData = async () => {
@@ -69,30 +75,21 @@ export default function Home() {
         setLoading(true);
         setError('');
 
-        const categoryFetches = await Promise.all(
-          categorySections.map(async (section) => {
-            const { data, error } = await supabase
-              .from('products')
-              .select('*')
-              .eq('status', 'active')
-              .eq('category', section.value)
-              .order('created_at', { ascending: false })
-              .limit(8);
+        const { data: allProducts, error: productsError } = await supabase
+          .from('products')
+          .select('*')
+          .eq('status', 'active')
+          .order('created_at', { ascending: false });
 
-            if (error) throw error;
-            console.log(`Category ${section.value} products:`, data);
+        if (productsError) throw productsError;
 
-            return {
-              key: section.value,
-              products: data || [],
-            };
-          })
-        );
-
-        const groupedByCategory = categoryFetches.reduce((acc, sectionResult) => {
-          acc[sectionResult.key] = sectionResult.products;
-          return acc;
-        }, {} as Record<string, ProductCard[]>);
+        const groupedByCategory = {
+          grocery: (allProducts || []).filter((product) => product.category === 'grocery').slice(0, 8),
+          electronics: (allProducts || []).filter((product) => product.category === 'electronics').slice(0, 8),
+          fashion: (allProducts || []).filter((product) => product.category === 'fashion').slice(0, 8),
+          home: (allProducts || []).filter((product) => product.category === 'home').slice(0, 8),
+          beauty: (allProducts || []).filter((product) => product.category === 'beauty').slice(0, 8),
+        };
 
         const { data: groupBuysData, error: groupBuysError } = await supabase
           .from('group_buys')
@@ -177,30 +174,37 @@ export default function Home() {
         {error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
         {loading ? (
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {categorySections.map((section) => (
-              <div key={section.value} className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`rounded-xl p-2 ${section.accent}`}>
-                      <section.icon className="h-5 w-5" />
+          showSkeleton ? (
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {categorySections.map((section) => (
+                <div key={section.value} className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`rounded-xl p-2 ${section.accent}`}>
+                        <section.icon className="h-5 w-5" />
+                      </div>
+                      <div className="h-4 w-28 rounded bg-gray-200" />
                     </div>
-                    <div className="h-4 w-28 rounded bg-gray-200" />
+                    <div className="h-4 w-20 rounded bg-gray-200" />
                   </div>
-                  <div className="h-4 w-20 rounded bg-gray-200" />
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {[1,2,3].map((item) => (
+                      <div key={item} className="rounded-2xl bg-gray-100 p-3">
+                        <div className="h-28 rounded-xl bg-gray-200" />
+                        <div className="mt-3 h-4 w-3/4 rounded bg-gray-200" />
+                        <div className="mt-2 h-3 w-1/2 rounded bg-gray-200" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[1,2,3].map((item) => (
-                    <div key={item} className="rounded-2xl bg-gray-100 p-3">
-                      <div className="h-28 rounded-xl bg-gray-200" />
-                      <div className="mt-3 h-4 w-3/4 rounded bg-gray-200" />
-                      <div className="mt-2 h-3 w-1/2 rounded bg-gray-200" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-6 rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-black/5">
+              <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-[#1D9E75] border-t-transparent" />
+              <p className="text-sm text-gray-600">Loading curated products...</p>
+            </div>
+          )
         ) : (
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             {categorySections.map((section) => {
@@ -235,7 +239,7 @@ export default function Home() {
                               <div className="relative">
                                 <div className="relative aspect-[4/5] bg-[#F6F6F6]">
                                   {product.image_url ? (
-                                    <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+                                    <img src={product.image_url} alt={product.name} loading="lazy" className="h-full w-full object-cover" />
                                   ) : (
                                     <div className="flex h-full items-center justify-center text-5xl">📦</div>
                                   )}

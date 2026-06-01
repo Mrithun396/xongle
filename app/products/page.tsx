@@ -70,7 +70,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const q = new URLSearchParams(window.location.search).get('q');
+    const q = new URLSearchParams(window.location.search).get('search') || new URLSearchParams(window.location.search).get('q');
     const categoryParam = new URLSearchParams(window.location.search).get('category');
     if (q) setSearchQuery(q);
     if (categoryParam) setSelectedCategory(categoryParam);
@@ -173,6 +173,14 @@ export default function ProductsPage() {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
+    if (query.trim()) {
+      router.push(`/products?search=${encodeURIComponent(query)}`);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    router.push('/products');
   };
 
   if (loading) {
@@ -197,11 +205,20 @@ export default function ProductsPage() {
         <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-black/5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#1D9E75]">Shop curated deals</p>
-              <h1 className="mt-2 text-3xl font-bold text-[#2D2D2D] sm:text-4xl">Premium products for every group buy</h1>
-              <p className="mt-2 max-w-2xl text-sm text-gray-600">
-                Filter by category, compare prices, and join community deals with one click.
-              </p>
+              {searchQuery ? (
+                <>
+                  <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#1D9E75]">Search results</p>
+                  <h1 className="mt-2 text-3xl font-bold text-[#2D2D2D] sm:text-4xl">{filteredProducts.length} results for "{searchQuery}"</h1>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#1D9E75]">Shop curated deals</p>
+                  <h1 className="mt-2 text-3xl font-bold text-[#2D2D2D] sm:text-4xl">Premium products for every group buy</h1>
+                  <p className="mt-2 max-w-2xl text-sm text-gray-600">
+                    Filter by category, compare prices, and join community deals with one click.
+                  </p>
+                </>
+              )}
             </div>
 
             <div className="w-full max-w-sm rounded-2xl bg-[#F6F6F6] p-3">
@@ -211,9 +228,18 @@ export default function ProductsPage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch(searchQuery)}
                   placeholder="Search products"
                   className="w-full bg-transparent text-sm text-[#2D2D2D] outline-none"
                 />
+                {searchQuery && (
+                  <button
+                    onClick={handleClearSearch}
+                    className="text-xs font-semibold text-gray-500 hover:text-gray-700"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -303,8 +329,16 @@ export default function ProductsPage() {
             {filteredProducts.length === 0 ? (
               <div className="rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-black/5">
                 <Filter className="mx-auto h-12 w-12 text-gray-300" />
-                <p className="mt-4 text-lg font-bold text-[#2D2D2D]">No products matched</p>
-                <p className="mt-1 text-sm text-gray-500">Try adjusting your filters or search terms.</p>
+                <p className="mt-4 text-lg font-bold text-[#2D2D2D]">{searchQuery ? `No products found for "${searchQuery}"` : 'No products matched'}</p>
+                <p className="mt-1 text-sm text-gray-500">{searchQuery ? 'Try different keywords or browse all products.' : 'Try adjusting your filters or search terms.'}</p>
+                {searchQuery && (
+                  <button
+                    onClick={handleClearSearch}
+                    className="mt-4 rounded-lg bg-[#1D9E75] px-6 py-2 font-semibold text-white hover:bg-[#15845f]"
+                  >
+                    Browse all products
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -318,7 +352,7 @@ export default function ProductsPage() {
                         <div className="relative">
                         <div className="relative aspect-[4/5] bg-[#F6F6F6]">
                           {product.image_url ? (
-                            <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+                            <img src={product.image_url} alt={product.name} loading="lazy" className="h-full w-full object-cover" />
                           ) : (
                             <div className="flex h-full items-center justify-center text-5xl">📦</div>
                           )}

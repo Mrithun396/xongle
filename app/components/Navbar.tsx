@@ -97,7 +97,7 @@ export default function Navbar({ showSearch = true, onSearch }: { showSearch?: b
     if (onSearch) {
       onSearch(searchQuery);
     } else {
-      router.push(`/products?q=${encodeURIComponent(searchQuery)}`);
+      router.push(`/products?search=${encodeURIComponent(searchQuery)}`);
     }
   };
 
