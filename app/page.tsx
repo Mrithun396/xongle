@@ -65,7 +65,7 @@ export default function Home() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const skeletonTimer = window.setTimeout(() => setShowSkeleton(false), 1000);
+    const skeletonTimer = window.setTimeout(() => setShowSkeleton(false), 500);
     return () => window.clearTimeout(skeletonTimer);
   }, []);
 
@@ -138,7 +138,7 @@ export default function Home() {
             Premium group buying for India
           </div>
 
-          <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
+          <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl" style={{ color: '#ffffff' }}>
             Buy together. Save more. Shop smarter.
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base text-white/80 sm:text-lg">
@@ -173,38 +173,31 @@ export default function Home() {
 
         {error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
-        {loading ? (
-          showSkeleton ? (
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {categorySections.map((section) => (
-                <div key={section.value} className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`rounded-xl p-2 ${section.accent}`}>
-                        <section.icon className="h-5 w-5" />
-                      </div>
-                      <div className="h-4 w-28 rounded bg-gray-200" />
+        {loading && showSkeleton ? (
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {categorySections.map((section) => (
+              <div key={section.value} className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`rounded-xl p-2 ${section.accent}`}>
+                      <section.icon className="h-5 w-5" />
                     </div>
-                    <div className="h-4 w-20 rounded bg-gray-200" />
+                    <div className="h-4 w-28 rounded bg-gray-200" />
                   </div>
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {[1,2,3].map((item) => (
-                      <div key={item} className="rounded-2xl bg-gray-100 p-3">
-                        <div className="h-28 rounded-xl bg-gray-200" />
-                        <div className="mt-3 h-4 w-3/4 rounded bg-gray-200" />
-                        <div className="mt-2 h-3 w-1/2 rounded bg-gray-200" />
-                      </div>
-                    ))}
-                  </div>
+                  <div className="h-4 w-20 rounded bg-gray-200" />
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-6 rounded-2xl bg-white p-8 text-center shadow-sm ring-1 ring-black/5">
-              <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-[#1D9E75] border-t-transparent" />
-              <p className="text-sm text-gray-600">Loading curated products...</p>
-            </div>
-          )
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[1,2,3].map((item) => (
+                    <div key={item} className="rounded-2xl bg-gray-100 p-3">
+                      <div className="h-28 rounded-xl bg-gray-200" />
+                      <div className="mt-3 h-4 w-3/4 rounded bg-gray-200" />
+                      <div className="mt-2 h-3 w-1/2 rounded bg-gray-200" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             {categorySections.map((section) => {

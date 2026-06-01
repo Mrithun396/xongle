@@ -138,6 +138,23 @@ export default function ProductDetailPage() {
     router.push(`/start-group/${productId}`);
   };
 
+  const handleBuyNow = () => {
+    if (!product) return;
+
+    addToCart(
+      {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image_url: product.image_url,
+        discount_percent: product.discount_percent,
+      },
+      quantity
+    );
+
+    router.push('/checkout');
+  };
+
   const formatTimeLeft = (expires_at: string | null) => {
     if (!expires_at) return 'Permanent';
     const diff = new Date(expires_at).getTime() - Date.now();
@@ -267,12 +284,15 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <div className="mt-6 grid gap-3">
                 <button onClick={handleAddToCart} className="w-full rounded-2xl bg-[#1d9e75] px-5 py-4 text-center text-base font-semibold text-white transition hover:bg-[#15845f]">
                   Add to Cart
                 </button>
+                <button onClick={handleBuyNow} className="w-full rounded-2xl bg-[#111111] px-5 py-4 text-center text-base font-semibold text-white transition hover:bg-[#333333]">
+                  Buy Now
+                </button>
                 <button onClick={handleStartGroupBuy} className="w-full rounded-2xl border-2 border-[#1d9e75] bg-white px-5 py-4 text-center text-base font-semibold text-[#1d9e75] transition hover:bg-green-50">
-                  {user ? 'Start Group Buy' : 'Sign In to Start Group Buy'}
+                  Group Buy
                 </button>
               </div>
 
