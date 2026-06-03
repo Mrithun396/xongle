@@ -77,7 +77,7 @@ export default function Home() {
       const { data: allProducts, error: productsError } = await supabase
         .from('products')
         .select('*')
-        .eq('is_active', true)
+        .eq('status', 'active')
         .order('created_at', { ascending: false });
 
       if (productsError) {
