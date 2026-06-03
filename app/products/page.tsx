@@ -76,43 +76,49 @@ export default function ProductsPage() {
     if (categoryParam) setSelectedCategory(categoryParam);
   }, []);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        setError('');
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      setError('');
 
-        const { data: productsData, error: productsError } = await supabase
-          .from('products')
-          .select('*')
-          .eq('status', 'active');
+      const { data: productsData, error: productsError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('status', 'active');
 
-        if (productsError) throw productsError;
-
-        const { data: groupBuysData, error: groupBuysError } = await supabase
-          .from('group_buys')
-          .select('*')
-          .eq('status', 'active');
-
-        if (groupBuysError) throw groupBuysError;
-
-        const productsWithGroupBuys = (productsData || []).map((product) => {
-          const activeGroupBuyCount = (groupBuysData || []).filter((gb) => gb.product_id === product.id).length;
-          return {
-            ...product,
-            activeGroupBuyCount,
-          };
-        });
-
-        setProducts(productsWithGroupBuys);
-      } catch (err) {
-        console.error('Error fetching products:', err);
-        setError('Failed to load products. Please try again.');
-      } finally {
-        setLoading(false);
+      if (productsError) {
+        console.log('Products page fetch error:', productsError);
+        throw productsError;
       }
-    };
 
+      const { data: groupBuysData, error: groupBuysError } = await supabase
+        .from('group_buys')
+        .select('*')
+        .eq('status', 'active');
+
+      if (groupBuysError) {
+        console.log('Products page group buys fetch error:', groupBuysError);
+        throw groupBuysError;
+      }
+
+      const productsWithGroupBuys = (productsData || []).map((product) => {
+        const activeGroupBuyCount = (groupBuysData || []).filter((gb) => gb.product_id === product.id).length;
+        return {
+          ...product,
+          activeGroupBuyCount,
+        };
+      });
+
+      setProducts(productsWithGroupBuys);
+    } catch (err) {
+      console.error('Error fetching products:', err);
+      setError('Failed to load products. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchProducts();
   }, []);
 
@@ -245,7 +251,17 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        {error && <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+        {error && (
+          <div className="mb-5 flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <div>{error}</div>
+            <button
+              onClick={fetchProducts}
+              className="w-fit rounded-xl bg-[#1d9e75] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#15845f]"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
           <aside className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5 lg:sticky lg:top-24 lg:h-fit">

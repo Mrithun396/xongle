@@ -69,50 +69,56 @@ export default function Home() {
     return () => window.clearTimeout(skeletonTimer);
   }, []);
 
-  useEffect(() => {
-    const loadHomeData = async () => {
-      try {
-        setLoading(true);
-        setError('');
+  const loadHomeData = async () => {
+    try {
+      setLoading(true);
+      setError('');
 
-        const { data: allProducts, error: productsError } = await supabase
-          .from('products')
-          .select('*')
-          .eq('status', 'active')
-          .order('created_at', { ascending: false });
+      const { data: allProducts, error: productsError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
 
-        if (productsError) throw productsError;
-
-        const groupedByCategory = {
-          grocery: (allProducts || []).filter((product) => product.category === 'grocery').slice(0, 8),
-          electronics: (allProducts || []).filter((product) => product.category === 'electronics').slice(0, 8),
-          fashion: (allProducts || []).filter((product) => product.category === 'fashion').slice(0, 8),
-          home: (allProducts || []).filter((product) => product.category === 'home').slice(0, 8),
-          beauty: (allProducts || []).filter((product) => product.category === 'beauty').slice(0, 8),
-        };
-
-        const { data: groupBuysData, error: groupBuysError } = await supabase
-          .from('group_buys')
-          .select('*, products(*)')
-          .eq('status', 'active')
-          .order('created_at', { ascending: false })
-          .limit(4);
-
-        if (groupBuysError) throw groupBuysError;
-
-        setCategoryProducts(groupedByCategory);
-        setActiveGroupBuys((groupBuysData || []).map((groupBuy) => ({
-          ...groupBuy,
-          products: Array.isArray(groupBuy.products) ? groupBuy.products[0] ?? null : groupBuy.products ?? null,
-        })));
-      } catch (err) {
-        console.error('Failed to load landing page data', err);
-        setError('Could not load niche products right now. Please refresh.');
-      } finally {
-        setLoading(false);
+      if (productsError) {
+        console.log('Home products fetch error:', productsError);
+        throw productsError;
       }
-    };
 
+      const groupedByCategory = {
+        grocery: (allProducts || []).filter((product) => product.category === 'grocery').slice(0, 8),
+        electronics: (allProducts || []).filter((product) => product.category === 'electronics').slice(0, 8),
+        fashion: (allProducts || []).filter((product) => product.category === 'fashion').slice(0, 8),
+        home: (allProducts || []).filter((product) => product.category === 'home').slice(0, 8),
+        beauty: (allProducts || []).filter((product) => product.category === 'beauty').slice(0, 8),
+      };
+
+      const { data: groupBuysData, error: groupBuysError } = await supabase
+        .from('group_buys')
+        .select('*, products(*)')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(4);
+
+      if (groupBuysError) {
+        console.log('Home group buys fetch error:', groupBuysError);
+        throw groupBuysError;
+      }
+
+      setCategoryProducts(groupedByCategory);
+      setActiveGroupBuys((groupBuysData || []).map((groupBuy) => ({
+        ...groupBuy,
+        products: Array.isArray(groupBuy.products) ? groupBuy.products[0] ?? null : groupBuy.products ?? null,
+      })));
+    } catch (err) {
+      console.error('Failed to load landing page data', err);
+      setError('Could not load niche products right now. Please refresh.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadHomeData();
   }, []);
 
@@ -171,7 +177,17 @@ export default function Home() {
           </div>
         </div>
 
-        {error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+        {error && (
+          <div className="mt-4 flex flex-col gap-3">
+            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+            <button
+              onClick={loadHomeData}
+              className="self-start rounded-xl bg-[#1d9e75] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#15845f]"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         {loading && showSkeleton ? (
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
