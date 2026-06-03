@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/app/components/Navbar';
-import { supabase } from '@/app/lib/supabase';
+import { createClient } from '@/app/lib/supabase';
 import { useCart } from '@/app/context/CartContext';
 import {
   CheckCircle2,
@@ -62,6 +62,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      const supabase = createClient();
       const { data } = await supabase.auth.getSession();
       setUser(data.session?.user || null);
     };
@@ -77,6 +78,7 @@ export default function ProductsPage() {
   }, []);
 
   const fetchProducts = async () => {
+    const supabase = createClient();
     try {
       setLoading(true);
       setError('');
