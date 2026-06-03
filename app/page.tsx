@@ -70,6 +70,7 @@ export default function Home() {
   }, []);
 
   const loadHomeData = async () => {
+    const supabase = createClient();
     try {
       setLoading(true);
       setError('');
