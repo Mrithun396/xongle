@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/app/components/Navbar';
 import { useCart } from '@/app/context/CartContext';
-import { supabase } from '@/app/lib/supabase';
+import { createClient } from '@/app/lib/supabase';
 import {
   ArrowRight,
   BadgePercent,
