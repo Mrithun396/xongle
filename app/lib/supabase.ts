@@ -7,5 +7,9 @@ export function createClient() {
   return createBrowserClient(supabaseUrl, supabaseAnonKey)
 }
 
-// Keep backward compatibility
-export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
+// This makes every file work - creates a fresh client each time it's accessed
+export const supabase = new Proxy({} as ReturnType<typeof createClient>, {
+  get(_target, prop) {
+    return createClient()[prop as keyof ReturnType<typeof createClient>]
+  }
+})
