@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/app/components/Navbar';
-import { supabase } from '@/app/lib/supabase';
+import { createClient } from '@/app/lib/supabase';
 import { ArrowRight, History, ShoppingBag, Users, WalletCards, Eye, Calendar, Package } from 'lucide-react';
 
 interface OrderRecord {

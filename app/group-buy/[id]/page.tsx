@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { supabase } from '@/app/lib/supabase';
+import { createClient } from '@/app/lib/supabase';
 import { Users, ArrowLeft, Check } from 'lucide-react';
 
 interface GroupBuy {

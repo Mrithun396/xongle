@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/app/components/Navbar';
-import { supabase } from '@/app/lib/supabase';
+import { createClient } from '@/app/lib/supabase';
 import { CheckCircle, Plus, ShoppingBag, TrendingUp, Users, AlertCircle, Sparkles, Edit3, Trash2 } from 'lucide-react';
 
 interface SellerProfile {

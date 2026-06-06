@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/app/components/Navbar';
 import { useCart } from '@/app/context/CartContext';
-import { supabase } from '@/app/lib/supabase';
+import { createClient } from '@/app/lib/supabase';
 import { CheckCircle, Package, MapPin, CreditCard, Tag, AlertCircle } from 'lucide-react';
 
 export default function CheckoutPage() {

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/app/lib/supabase';
+import { createClient } from '@/app/lib/supabase';
 import { Mail, User, ArrowRight, AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function SignUpPage() {

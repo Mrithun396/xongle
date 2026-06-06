@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/app/components/Navbar';
-import { supabase } from '@/app/lib/supabase';
+import { createClient } from '@/app/lib/supabase';
 import { useCart } from '@/app/context/CartContext';
 import { ArrowLeft, ShoppingCart, Star, Zap, Users, AlertCircle, CheckCircle } from 'lucide-react';
 
