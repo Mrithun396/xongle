@@ -127,6 +127,7 @@ export default function AdminPage() {
   };
 
   const fetchAdminData = async () => {
+    const supabase = createClient();
     setError('');
 
     try {
