@@ -42,7 +42,13 @@ type TabType = 'overview' | 'orders' | 'groups' | 'wallet';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    if (typeof window !== 'undefined') {
+      const tab = new URLSearchParams(window.location.search).get('tab');
+      if (tab === 'orders' || tab === 'groups' || tab === 'wallet') return tab;
+    }
+    return 'overview';
+  });
 
   const [loading, setLoading] = useState(true);
   const [showSpinner, setShowSpinner] = useState(true);
@@ -61,6 +67,7 @@ export default function DashboardPage() {
     const timeoutId = window.setTimeout(() => setShowSpinner(false), 1000);
 
     const loadDashboard = async () => {
+      const supabase = createClient();
       try {
         const { data: sessionData } = await supabase.auth.getSession();
 
