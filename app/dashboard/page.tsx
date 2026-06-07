@@ -199,6 +199,7 @@ export default function DashboardPage() {
   }, [router]);
 
   const handleLogout = async () => {
+    const supabase = createClient();
     await supabase.auth.signOut();
     router.push('/login');
   };
