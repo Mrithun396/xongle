@@ -45,6 +45,7 @@ export default function SignUpPage() {
       setLoading(true);
       setError('');
       setSuccess('');
+      const supabase = createClient();
 
       const redirectUrl = `${window.location.origin}/auth/callback?redirect=/products`;
 

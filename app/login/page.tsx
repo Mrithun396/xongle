@@ -24,6 +24,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     const checkSession = async () => {
+      const supabase = createClient();
       const { data } = await supabase.auth.getSession();
       if (data.session) {
         router.push(redirectTo);
@@ -46,6 +47,7 @@ export default function LoginPage() {
 
     try {
       setLoading(true);
+      const supabase = createClient();
       const redirectUrl = `${window.location.origin}/auth/callback`;
 
       const { error } = await supabase.auth.signInWithOtp({

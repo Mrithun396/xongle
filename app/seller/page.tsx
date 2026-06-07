@@ -60,6 +60,7 @@ export default function SellerPage() {
   useEffect(() => {
     const loadSellerData = async () => {
       try {
+        const supabase = createClient();
         setLoading(true);
         setError('');
 
@@ -158,6 +159,7 @@ export default function SellerPage() {
       };
 
       if (editingProductId) {
+        const supabase = createClient();
         const { error } = await supabase
           .from('products')
           .update(item)
@@ -169,6 +171,7 @@ export default function SellerPage() {
 
         setSubmitMessage('Product updated successfully.');
       } else {
+        const supabase = createClient();
         const { error } = await supabase.from('products').insert(item);
 
         if (error) {
@@ -197,6 +200,7 @@ export default function SellerPage() {
   };
 
   const reloadProducts = async (sellerId: string) => {
+    const supabase = createClient();
     const { data: productsData, error: productsError } = await supabase
       .from('products')
       .select('*, orders(id, amount)')
@@ -249,6 +253,7 @@ export default function SellerPage() {
     setSubmitMessage('');
 
     try {
+      const supabase = createClient();
       const { error } = await supabase.from('products').delete().eq('id', productId);
       if (error) {
         throw error;

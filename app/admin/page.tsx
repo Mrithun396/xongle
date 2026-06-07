@@ -250,6 +250,7 @@ export default function AdminPage() {
   const handleProductAction = async (productId: string, status: string) => {
     setSubmitting(true);
     try {
+      const supabase = createClient();
       const { error } = await supabase.from('products').update({ status }).eq('id', productId);
       if (error) throw error;
       refreshData();
@@ -264,6 +265,7 @@ export default function AdminPage() {
   const handleSellerStatus = async (sellerId: string, role: string) => {
     setSubmitting(true);
     try {
+      const supabase = createClient();
       const { error } = await supabase.from('users').update({ role }).eq('id', sellerId);
       if (error) throw error;
       refreshData();
@@ -278,6 +280,7 @@ export default function AdminPage() {
   const handleOrderStatus = async (orderId: string, status: string) => {
     setSubmitting(true);
     try {
+      const supabase = createClient();
       const { error } = await supabase.from('orders').update({ status }).eq('id', orderId);
       if (error) throw error;
       refreshData();
@@ -308,6 +311,7 @@ export default function AdminPage() {
         return;
       }
 
+      const supabase = createClient();
       if (editingBoostId) {
         const { error } = await supabase.from('festival_boosts').update(payload).eq('id', editingBoostId);
         if (error) throw error;
@@ -341,6 +345,7 @@ export default function AdminPage() {
   const handleBoostDelete = async (boostId: string) => {
     setSubmitting(true);
     try {
+      const supabase = createClient();
       const { error } = await supabase.from('festival_boosts').delete().eq('id', boostId);
       if (error) throw error;
       refreshData();
@@ -951,6 +956,7 @@ export default function AdminPage() {
                               <select
                                 value={user.role}
                                 onChange={async (event) => {
+                                  const supabase = createClient();
                                   const newRole = event.target.value;
                                   setSubmitting(true);
                                   try {

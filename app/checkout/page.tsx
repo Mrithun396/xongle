@@ -29,6 +29,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      const supabase = createClient();
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
         router.push('/login?redirect=/checkout');
@@ -86,6 +87,7 @@ export default function CheckoutPage() {
     }
 
     try {
+      const supabase = createClient();
       setPlacing(true);
       setError('');
 

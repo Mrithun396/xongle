@@ -46,6 +46,7 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      const supabase = createClient();
       const { data } = await supabase.auth.getSession();
       setUser(data.session?.user || null);
     };
@@ -56,6 +57,7 @@ export default function ProductDetailPage() {
   useEffect(() => {
     const fetchProduct = async () => {
       try {
+        const supabase = createClient();
         setLoading(true);
         setError('');
 

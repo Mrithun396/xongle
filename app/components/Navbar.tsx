@@ -40,6 +40,7 @@ export default function Navbar({ showSearch = true, onSearch }: { showSearch?: b
 
   useEffect(() => {
     const loadSession = async () => {
+      const supabase = createClient();
       const { data } = await supabase.auth.getSession();
       const currentUser = data.session?.user || null;
       setUser(currentUser);
@@ -62,6 +63,7 @@ export default function Navbar({ showSearch = true, onSearch }: { showSearch?: b
 
     loadSession();
 
+    const supabase = createClient();
     const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const currentUser = session?.user || null;
       setUser(currentUser);
@@ -104,6 +106,7 @@ export default function Navbar({ showSearch = true, onSearch }: { showSearch?: b
   };
 
   const handleLogout = async () => {
+    const supabase = createClient();
     await supabase.auth.signOut();
     setUser(null);
     setProfile({ name: null, role: null });

@@ -44,6 +44,7 @@ export default function GroupBuyDetailPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      const supabase = createClient();
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
         router.push('/login');
@@ -57,6 +58,7 @@ export default function GroupBuyDetailPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const supabase = createClient();
         setLoading(true);
         setError('');
 
@@ -109,6 +111,7 @@ export default function GroupBuyDetailPage() {
 
   const handleJoinGroup = async () => {
     try {
+      const supabase = createClient();
       const { error } = await supabase.from('group_members').insert([
         {
           group_buy_id: groupBuyId,

@@ -29,6 +29,7 @@ export default function CreateGroupBuyPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      const supabase = createClient();
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
         router.push('/login');
@@ -42,6 +43,7 @@ export default function CreateGroupBuyPage() {
   useEffect(() => {
     const fetchProduct = async () => {
       try {
+        const supabase = createClient();
         setLoading(true);
         const { data, error } = await supabase
           .from('products')
@@ -69,6 +71,7 @@ export default function CreateGroupBuyPage() {
     if (!user || !product) return;
 
     try {
+      const supabase = createClient();
       setCreating(true);
       setError('');
 
