@@ -48,13 +48,12 @@ export default function LoginPage() {
     try {
       setLoading(true);
       const supabase = createClient();
-      const redirectUrl = new URL('/auth/callback', window.location.origin);
-      redirectUrl.searchParams.set('redirect', redirectTo);
+      const redirectUrl = `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`;
 
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: {
-          emailRedirectTo: redirectUrl.toString(),
+          emailRedirectTo: redirectUrl,
         },
       });
 

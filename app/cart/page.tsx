@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/app/components/Navbar';
 import { useCart } from '@/app/context/CartContext';
 import { createClient } from '@/app/lib/supabase';
+import { withTimeout } from '@/app/lib/withTimeout';
 import {
   ArrowLeft,
   Trash2,
@@ -24,10 +25,29 @@ export default function CartPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      console.log('checkAuth: starting');
       const supabase = createClient();
+      console.log('checkAuth: got supabase client');
 
       try {
-        const { data } = await supabase.auth.getSession();
+        type SessionResult = Awaited<ReturnType<typeof supabase.auth.getSession>>;
+
+        const sessionResult: SessionResult | null = await withTimeout(supabase.auth.getSession(), 3000).catch((error) => {
+          if (error instanceof Error && error.message === 'timeout') {
+            console.log('checkAuth: getSession timed out');
+            return null;
+          }
+
+          throw error;
+        });
+
+        if (!sessionResult) {
+          setUser(null);
+          return;
+        }
+
+        const { data } = sessionResult;
+        console.log('checkAuth: got session result', data);
         setUser(data.session?.user || null);
       } catch (error) {
         console.error('Failed to load auth session in CartPage:', error);

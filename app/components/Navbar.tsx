@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/app/lib/supabase';
 import { useCart } from '@/app/context/CartContext';
+import { withTimeout } from '@/app/lib/withTimeout';
 import {
   ChevronDown,
   Home as HomeIcon,
@@ -41,7 +42,28 @@ export default function Navbar({ showSearch = true, onSearch }: { showSearch?: b
   useEffect(() => {
     const loadSession = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        console.log('loadSession: starting');
+        const sessionSupabase = createClient();
+        console.log('loadSession: got supabase client');
+
+        type SessionResult = Awaited<ReturnType<typeof sessionSupabase.auth.getSession>>;
+
+        const sessionResult: SessionResult | null = await withTimeout(sessionSupabase.auth.getSession(), 3000).catch((error) => {
+          if (error instanceof Error && error.message === 'timeout') {
+            console.log('loadSession: getSession timed out');
+            return null;
+          }
+
+          throw error;
+        });
+
+        if (!sessionResult) {
+          setUser(null);
+          return;
+        }
+
+        const { data } = sessionResult;
+        console.log('loadSession: got session result', data);
         const currentUser = data.session?.user || null;
         setUser(currentUser);
 
