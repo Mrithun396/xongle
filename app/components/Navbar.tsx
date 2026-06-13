@@ -40,25 +40,37 @@ export default function Navbar({ showSearch = true, onSearch }: { showSearch?: b
 
   useEffect(() => {
     const loadSession = async () => {
-      const supabase = createClient();
-      const { data } = await supabase.auth.getSession();
-      const currentUser = data.session?.user || null;
-      setUser(currentUser);
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Navbar session error:', error);
+        }
 
-      if (currentUser) {
-        const { data: profileData } = await supabase
-          .from('users')
-          .select('name, role')
-          .eq('id', currentUser.id)
-          .single();
+        const currentUser = data?.session?.user || null;
+        setUser(currentUser);
 
-        setProfile({
-          name: profileData?.name || currentUser.email?.split('@')[0] || null,
-          role: profileData?.role || null,
-        });
+        if (currentUser) {
+          const { data: profileData, error: profileError } = await supabase
+            .from('users')
+            .select('name, role')
+            .eq('id', currentUser.id)
+            .single();
+
+          if (profileError) {
+            console.error('Navbar profile fetch error:', profileError);
+          }
+
+          setProfile({
+            name: profileData?.name || currentUser.email?.split('@')[0] || null,
+            role: profileData?.role || null,
+          });
+        }
+      } catch (err) {
+        console.error('Navbar auth load failed:', err);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     loadSession();
@@ -69,11 +81,15 @@ export default function Navbar({ showSearch = true, onSearch }: { showSearch?: b
       setUser(currentUser);
 
       if (currentUser) {
-        const { data: profileData } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from('users')
           .select('name, role')
           .eq('id', currentUser.id)
           .single();
+
+        if (profileError) {
+          console.error('Navbar profile fetch error:', profileError);
+        }
 
         setProfile({
           name: profileData?.name || currentUser.email?.split('@')[0] || null,
