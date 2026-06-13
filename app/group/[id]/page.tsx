@@ -32,6 +32,10 @@ interface GroupMember {
   is_ready: boolean;
 }
 
+interface GroupOrder {
+  user_id: string;
+}
+
 export default function GroupBuyPage() {
   const router = useRouter();
   const params = useParams();
@@ -100,7 +104,7 @@ export default function GroupBuyPage() {
 
         // Check if user already joined
         if (user) {
-          const isJoined = membersData?.some((m) => m.user_id === user.id);
+          const isJoined = membersData?.some((m: GroupMember) => m.user_id === user.id);
           setJoined(!!isJoined);
         }
       } catch (err) {
@@ -224,10 +228,10 @@ export default function GroupBuyPage() {
 
       if (membersError) throw membersError;
 
-      const membersList = refreshedMembers || [];
+      const membersList: GroupMember[] = refreshedMembers || [];
       setMembers(membersList);
 
-      const readyCount = membersList.filter((member) => member.is_ready).length;
+      const readyCount = membersList.filter((member: GroupMember) => member.is_ready).length;
       const allReady = membersList.length > 0 && readyCount === membersList.length;
 
       if (allReady) {
@@ -238,11 +242,11 @@ export default function GroupBuyPage() {
 
         if (existingOrdersError) throw existingOrdersError;
 
-        const existingUserIds = new Set((existingOrders || []).map((order) => order.user_id));
+        const existingUserIds = new Set((existingOrders || []).map((order: GroupOrder) => order.user_id));
 
         const orderRows = membersList
-          .filter((member) => !existingUserIds.has(member.user_id))
-          .map((member) => ({
+          .filter((member: GroupMember) => !existingUserIds.has(member.user_id))
+          .map((member: GroupMember) => ({
             user_id: member.user_id,
             product_id: product.id,
             group_buy_id: groupBuyId,

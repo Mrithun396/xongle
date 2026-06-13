@@ -93,7 +93,7 @@ export default function GroupBuyDetailPage() {
 
         // Check if user already joined
         if (user) {
-          const isJoined = membersData?.some((m) => m.user_id === user.id);
+          const isJoined = membersData?.some((m: any) => m.user_id === user.id);
           setJoined(!!isJoined);
         }
       } catch (err) {

@@ -26,6 +26,14 @@ interface ProductRecord {
   orders_count?: number;
 }
 
+interface SellerOrder {
+  amount: number | string | null;
+}
+
+interface SellerProduct extends ProductRecord {
+  orders?: SellerOrder[];
+}
+
 interface SellerStats {
   totalOrders: number;
   totalRevenue: number;
@@ -104,13 +112,13 @@ export default function SellerPage() {
           throw productsError;
         }
 
-        const normalizedProducts = (productsData || []).map((product: any) => ({
+        const normalizedProducts: SellerProduct[] = (productsData || []).map((product: SellerProduct) => ({
           ...product,
           orders_count: Array.isArray(product.orders) ? product.orders.length : 0,
         }));
 
-        const allOrders = normalizedProducts.flatMap((product) => product.orders || []);
-        const totalRevenue = allOrders.reduce((sum, order: any) => sum + Number(order.amount || 0), 0);
+        const allOrders = normalizedProducts.flatMap((product: SellerProduct) => product.orders || []);
+        const totalRevenue = allOrders.reduce((sum: number, order: SellerOrder) => sum + Number(order.amount || 0), 0);
         const totalOrders = allOrders.length;
 
         setProducts(normalizedProducts);
@@ -211,13 +219,13 @@ export default function SellerPage() {
       throw productsError;
     }
 
-    const normalizedProducts = (productsData || []).map((product: any) => ({
+    const normalizedProducts: SellerProduct[] = (productsData || []).map((product: SellerProduct) => ({
       ...product,
       orders_count: Array.isArray(product.orders) ? product.orders.length : 0,
     }));
 
-    const allOrders = normalizedProducts.flatMap((product) => product.orders || []);
-    const totalRevenue = allOrders.reduce((sum, order: any) => sum + Number(order.amount || 0), 0);
+    const allOrders = normalizedProducts.flatMap((product: SellerProduct) => product.orders || []);
+    const totalRevenue = allOrders.reduce((sum: number, order: SellerOrder) => sum + Number(order.amount || 0), 0);
     const totalOrders = allOrders.length;
 
     setProducts(normalizedProducts);
