@@ -66,7 +66,7 @@ export default function Navbar({ showSearch = true, onSearch }: { showSearch?: b
 
     loadSession();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event: string, session: any) => {
       const currentUser = session?.user || null;
       setUser(currentUser);
 
