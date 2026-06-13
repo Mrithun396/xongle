@@ -30,8 +30,8 @@ const categories = [
 
 export default function Navbar({ showSearch = true, onSearch }: { showSearch?: boolean; onSearch?: (query: string) => void }) {
   const router = useRouter();
+  const supabase = createClient();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<{ name: string | null; role: string | null }>({ name: null, role: null });
@@ -41,33 +41,24 @@ export default function Navbar({ showSearch = true, onSearch }: { showSearch?: b
   useEffect(() => {
     const loadSession = async () => {
       try {
-        const supabase = createClient();
-        const { data, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error('Navbar session error:', error);
-        }
-
-        const currentUser = data?.session?.user || null;
+        const { data } = await supabase.auth.getSession();
+        const currentUser = data.session?.user || null;
         setUser(currentUser);
 
         if (currentUser) {
-          const { data: profileData, error: profileError } = await supabase
+          const { data: profileData } = await supabase
             .from('users')
             .select('name, role')
             .eq('id', currentUser.id)
             .single();
-
-          if (profileError) {
-            console.error('Navbar profile fetch error:', profileError);
-          }
 
           setProfile({
             name: profileData?.name || currentUser.email?.split('@')[0] || null,
             role: profileData?.role || null,
           });
         }
-      } catch (err) {
-        console.error('Navbar auth load failed:', err);
+      } catch (error) {
+        console.error('Failed to load auth session in Navbar:', error);
       } finally {
         setLoading(false);
       }
@@ -75,21 +66,16 @@ export default function Navbar({ showSearch = true, onSearch }: { showSearch?: b
 
     loadSession();
 
-    const supabase = createClient();
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       const currentUser = session?.user || null;
       setUser(currentUser);
 
       if (currentUser) {
-        const { data: profileData, error: profileError } = await supabase
+        const { data: profileData } = await supabase
           .from('users')
           .select('name, role')
           .eq('id', currentUser.id)
           .single();
-
-        if (profileError) {
-          console.error('Navbar profile fetch error:', profileError);
-        }
 
         setProfile({
           name: profileData?.name || currentUser.email?.split('@')[0] || null,
@@ -98,7 +84,6 @@ export default function Navbar({ showSearch = true, onSearch }: { showSearch?: b
       } else {
         setProfile({ name: null, role: null });
       }
-      setAccountOpen(false);
     });
 
     return () => {
@@ -122,11 +107,9 @@ export default function Navbar({ showSearch = true, onSearch }: { showSearch?: b
   };
 
   const handleLogout = async () => {
-    const supabase = createClient();
     await supabase.auth.signOut();
     setUser(null);
     setProfile({ name: null, role: null });
-    setAccountOpen(false);
     router.push('/');
   };
 
@@ -179,74 +162,28 @@ export default function Navbar({ showSearch = true, onSearch }: { showSearch?: b
 
             {!loading && (
               user ? (
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setAccountOpen((current) => !current)}
-                    className="inline-flex items-center gap-3 rounded-full border border-[#D8E8E3] bg-[#F8FBFA] px-3 py-2 transition hover:border-[#1D9E75]"
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/dashboard"
+                    className="flex items-center gap-2 rounded-full border border-[#D8E8E3] bg-[#F8FBFA] px-2.5 py-1.5 transition hover:border-[#1D9E75]"
                   >
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1D9E75] text-xs font-bold text-white">
                       {initials}
                     </div>
-                    <div className="hidden text-left sm:block">
+                    <div className="text-left">
                       <p className="text-xs font-bold text-[#2D2D2D]">{displayName}</p>
                       <p className="text-[10px] text-gray-500">Account</p>
                     </div>
-                    <ChevronDown className="h-4 w-4 text-[#2D2D2D]" />
-                  </button>
+                  </Link>
 
-                  {accountOpen && (
-                    <div className="absolute right-0 z-20 mt-2 w-[220px] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-lg">
-                      <div className="space-y-1 p-2">
-                        <Link
-                          href="/dashboard"
-                          className="block rounded-2xl px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-[#F4FAF8]"
-                          onClick={() => setAccountOpen(false)}
-                        >
-                          Dashboard
-                        </Link>
-                        <Link
-                          href="/dashboard?tab=orders"
-                          className="block rounded-2xl px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-[#F4FAF8]"
-                          onClick={() => setAccountOpen(false)}
-                        >
-                          My Orders
-                        </Link>
-                        <Link
-                          href="/dashboard?tab=groups"
-                          className="block rounded-2xl px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-[#F4FAF8]"
-                          onClick={() => setAccountOpen(false)}
-                        >
-                          My Groups
-                        </Link>
-                        {(profile.role === 'seller' || profile.role === 'admin') && (
-                          <Link
-                            href="/seller"
-                            className="block rounded-2xl px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-[#F4FAF8]"
-                            onClick={() => setAccountOpen(false)}
-                          >
-                            Seller Dashboard
-                          </Link>
-                        )}
-                        {profile.role === 'admin' && (
-                          <Link
-                            href="/admin"
-                            className="block rounded-2xl px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-[#F4FAF8]"
-                            onClick={() => setAccountOpen(false)}
-                          >
-                            Admin Panel
-                          </Link>
-                        )}
-                        <button
-                          type="button"
-                          onClick={handleLogout}
-                          className="mt-1 w-full rounded-2xl bg-[#FFF1F1] px-3 py-2 text-left text-sm font-semibold text-[#FF6161] transition hover:bg-[#FFEAEA]"
-                        >
-                          Logout
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="inline-flex items-center gap-2 rounded-full bg-[#FFF1F1] px-3 py-2 text-xs font-bold text-[#FF6161]"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    Logout
+                  </button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
@@ -329,25 +266,9 @@ export default function Navbar({ showSearch = true, onSearch }: { showSearch?: b
             {!loading && user ? (
               <>
                 <Link href="/dashboard" className="block rounded-xl px-3 py-2 text-sm font-semibold text-[#2D2D2D] hover:bg-[#F4FAF8] hover:text-[#1D9E75]" onClick={() => setMobileMenuOpen(false)}>
-                  Dashboard
+                  My account
                 </Link>
-                <Link href="/dashboard?tab=orders" className="block rounded-xl px-3 py-2 text-sm font-semibold text-[#2D2D2D] hover:bg-[#F4FAF8] hover:text-[#1D9E75]" onClick={() => setMobileMenuOpen(false)}>
-                  My Orders
-                </Link>
-                <Link href="/dashboard?tab=groups" className="block rounded-xl px-3 py-2 text-sm font-semibold text-[#2D2D2D] hover:bg-[#F4FAF8] hover:text-[#1D9E75]" onClick={() => setMobileMenuOpen(false)}>
-                  My Groups
-                </Link>
-                {(profile.role === 'seller' || profile.role === 'admin') && (
-                  <Link href="/seller" className="block rounded-xl px-3 py-2 text-sm font-semibold text-[#2D2D2D] hover:bg-[#F4FAF8] hover:text-[#1D9E75]" onClick={() => setMobileMenuOpen(false)}>
-                    Seller Dashboard
-                  </Link>
-                )}
-                {profile.role === 'admin' && (
-                  <Link href="/admin" className="block rounded-xl px-3 py-2 text-sm font-semibold text-[#2D2D2D] hover:bg-[#F4FAF8] hover:text-[#1D9E75]" onClick={() => setMobileMenuOpen(false)}>
-                    Admin Panel
-                  </Link>
-                )}
-                <button type="button" onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="mt-1 w-full rounded-xl bg-[#FFF1F1] px-3 py-2 text-left text-sm font-bold text-[#FF6161]">
+                <button type="button" onClick={handleLogout} className="mt-1 w-full rounded-xl bg-[#FFF1F1] px-3 py-2 text-left text-sm font-bold text-[#FF6161]">
                   Logout
                 </button>
               </>

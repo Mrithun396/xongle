@@ -25,9 +25,15 @@ export default function CartPage() {
   useEffect(() => {
     const checkAuth = async () => {
       const supabase = createClient();
-      const { data } = await supabase.auth.getSession();
-      setUser(data.session?.user || null);
-      setLoading(false);
+
+      try {
+        const { data } = await supabase.auth.getSession();
+        setUser(data.session?.user || null);
+      } catch (error) {
+        console.error('Failed to load auth session in CartPage:', error);
+      } finally {
+        setLoading(false);
+      }
     };
     checkAuth();
   }, []);
