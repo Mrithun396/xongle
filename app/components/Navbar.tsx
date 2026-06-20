@@ -50,14 +50,29 @@ export default function Navbar({ showSearch = true, onSearch }: { showSearch?: b
 
         type SessionResult = Awaited<ReturnType<typeof sessionSupabase.auth.getSession>>;
 
-        const sessionResult: SessionResult | null = await withTimeout(sessionSupabase.auth.getSession(), 3000).catch((error) => {
-          if (error instanceof Error && error.message === 'timeout') {
-            console.log('loadSession: getSession timed out');
-            return null;
-          }
+        const getSessionStart = Date.now();
+        console.log('loadSession: calling getSession()', { startTime: getSessionStart });
 
-          throw error;
-        });
+        const sessionResult: SessionResult | null = await withTimeout(sessionSupabase.auth.getSession(), 3000)
+          .then((result) => {
+            console.log('loadSession: getSession resolved', {
+              endTime: Date.now(),
+              durationMs: Date.now() - getSessionStart,
+              result,
+            });
+            return result;
+          })
+          .catch((error) => {
+            if (error instanceof Error && error.message === 'timeout') {
+              console.log('loadSession: getSession timed out', {
+                endTime: Date.now(),
+                durationMs: Date.now() - getSessionStart,
+              });
+              return null;
+            }
+
+            throw error;
+          });
 
         if (!sessionResult) {
           console.log('loadSession: sessionResult is null');
