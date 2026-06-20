@@ -40,6 +40,8 @@ export default function Navbar({ showSearch = true, onSearch }: { showSearch?: b
   const { cartCount } = useCart();
 
   useEffect(() => {
+    console.log('Navbar mounted');
+
     const loadSession = async () => {
       try {
         console.log('loadSession: starting');
@@ -58,12 +60,18 @@ export default function Navbar({ showSearch = true, onSearch }: { showSearch?: b
         });
 
         if (!sessionResult) {
+          console.log('loadSession: sessionResult is null');
           setUser(null);
           return;
         }
 
         const { data } = sessionResult;
-        console.log('loadSession: got session result', data);
+        console.log('loadSession: got session result', {
+          fullResult: sessionResult,
+          session: data.session,
+          hasUser: Boolean(data.session?.user),
+          user: data.session?.user ?? null,
+        });
         const currentUser = data.session?.user || null;
         setUser(currentUser);
 
