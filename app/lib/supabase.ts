@@ -7,7 +7,11 @@ let client: ReturnType<typeof createBrowserClient> | undefined
 
 export function createClient() {
   if (!client) {
-    client = createBrowserClient(supabaseUrl, supabaseAnonKey)
+    client = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        lock: async (_name, _acquireTimeout, fn) => fn(),
+      },
+    })
   }
 
   return client
