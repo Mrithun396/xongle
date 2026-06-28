@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/app/lib/supabase';
 import { useCart } from '@/app/context/CartContext';
-import { withTimeout } from '@/app/lib/withTimeout';
+import { useAuth } from '@/app/context/AuthContext';
 import {
   ChevronDown,
   Home as HomeIcon,
@@ -31,110 +31,10 @@ const categories = [
 
 export default function Navbar({ showSearch = true, onSearch }: { showSearch?: boolean; onSearch?: (query: string) => void }) {
   const router = useRouter();
-  const supabase = createClient();
+  const { user, profile, loading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<{ name: string | null; role: string | null }>({ name: null, role: null });
-  const [loading, setLoading] = useState(true);
   const { cartCount } = useCart();
-
-  useEffect(() => {
-    console.log('Navbar mounted');
-
-    const loadSession = async () => {
-      try {
-        console.log('loadSession: starting');
-        const sessionSupabase = createClient();
-        console.log('loadSession: got supabase client');
-
-        type SessionResult = Awaited<ReturnType<typeof sessionSupabase.auth.getSession>>;
-
-        const getSessionStart = Date.now();
-        console.log('loadSession: calling getSession()', { startTime: getSessionStart });
-
-        const sessionResult: SessionResult | null = await withTimeout(sessionSupabase.auth.getSession(), 3000)
-          .then((result) => {
-            console.log('loadSession: getSession resolved', {
-              endTime: Date.now(),
-              durationMs: Date.now() - getSessionStart,
-              result,
-            });
-            return result;
-          })
-          .catch((error) => {
-            if (error instanceof Error && error.message === 'timeout') {
-              console.log('loadSession: getSession timed out', {
-                endTime: Date.now(),
-                durationMs: Date.now() - getSessionStart,
-              });
-              return null;
-            }
-
-            throw error;
-          });
-
-        if (!sessionResult) {
-          console.log('loadSession: sessionResult is null');
-          setUser(null);
-          return;
-        }
-
-        const { data } = sessionResult;
-        console.log('loadSession: got session result', {
-          fullResult: sessionResult,
-          session: data.session,
-          hasUser: Boolean(data.session?.user),
-          user: data.session?.user ?? null,
-        });
-        const currentUser = data.session?.user || null;
-        setUser(currentUser);
-
-        if (currentUser) {
-          const { data: profileData } = await supabase
-            .from('users')
-            .select('name, role')
-            .eq('id', currentUser.id)
-            .single();
-
-          setProfile({
-            name: profileData?.name || currentUser.email?.split('@')[0] || null,
-            role: profileData?.role || null,
-          });
-        }
-      } catch (error) {
-        console.error('Failed to load auth session in Navbar:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadSession();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event: string, session: any) => {
-      const currentUser = session?.user || null;
-      setUser(currentUser);
-
-      if (currentUser) {
-        const { data: profileData } = await supabase
-          .from('users')
-          .select('name, role')
-          .eq('id', currentUser.id)
-          .single();
-
-        setProfile({
-          name: profileData?.name || currentUser.email?.split('@')[0] || null,
-          role: profileData?.role || null,
-        });
-      } else {
-        setProfile({ name: null, role: null });
-      }
-    });
-
-    return () => {
-      authListener?.subscription?.unsubscribe();
-    };
-  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -152,9 +52,8 @@ export default function Navbar({ showSearch = true, onSearch }: { showSearch?: b
   };
 
   const handleLogout = async () => {
+    const supabase = createClient();
     await supabase.auth.signOut();
-    setUser(null);
-    setProfile({ name: null, role: null });
     router.push('/');
   };
 

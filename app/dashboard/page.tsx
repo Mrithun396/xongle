@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/app/components/Navbar';
 import { createClient } from '@/app/lib/supabase';
+import { useAuth } from '@/app/context/AuthContext';
 import { ArrowRight, History, ShoppingBag, Users, WalletCards, Eye, Calendar, Package } from 'lucide-react';
 
 interface OrderRecord {
@@ -42,6 +43,7 @@ type TabType = 'overview' | 'orders' | 'groups' | 'wallet';
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     if (typeof window !== 'undefined') {
       const tab = new URLSearchParams(window.location.search).get('tab');
@@ -64,30 +66,28 @@ export default function DashboardPage() {
   const [availableCoupons, setAvailableCoupons] = useState<number>(0);
 
   useEffect(() => {
+    if (authLoading) return;
+
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
     const timeoutId = window.setTimeout(() => setShowSpinner(false), 1000);
 
     const loadDashboard = async () => {
       const supabase = createClient();
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-
-        if (!sessionData.session) {
-          router.push('/login');
-          return;
-        }
-
-        const authUser = sessionData.session.user;
-
         const { data: userProfile } = await supabase
           .from('users')
           .select('id, name, phone, role, referral_code')
-          .eq('id', authUser.id)
+          .eq('id', user.id)
           .single();
 
         setProfile({
-          email: authUser.email,
-          name: userProfile?.name || authUser.user_metadata?.full_name || 'Buyer',
-          phone: userProfile?.phone || authUser.phone || 'Not provided',
+          email: user.email,
+          name: userProfile?.name || user.user_metadata?.full_name || 'Buyer',
+          phone: userProfile?.phone || user.phone || 'Not provided',
           role: userProfile?.role || 'buyer',
           referralCode: userProfile?.referral_code || 'N/A',
         });
@@ -96,16 +96,16 @@ export default function DashboardPage() {
           supabase
             .from('orders')
             .select('*, products(name, image_url, price, discount_percent)')
-            .eq('user_id', authUser.id)
+            .eq('user_id', user.id)
             .order('created_at', { ascending: false }),
           supabase
             .from('group_members')
             .select('*, group_buys(*, products(name, image_url))')
-            .eq('user_id', authUser.id),
+            .eq('user_id', user.id),
           supabase
             .from('coupons')
             .select('*')
-            .eq('user_id', authUser.id)
+            .eq('user_id', user.id)
             .eq('used', false),
         ]);
 
@@ -196,7 +196,7 @@ export default function DashboardPage() {
     };
 
     loadDashboard();
-  }, [router]);
+  }, [user, authLoading, router]);
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -223,7 +223,6 @@ export default function DashboardPage() {
       <Navbar showSearch={false} />
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Header */}
         <section className="mb-8 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
           <div className="flex items-center justify-between">
             <div>
@@ -236,7 +235,6 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* Tabs */}
         <div className="mb-6 flex gap-2 overflow-x-auto rounded-2xl bg-white p-2 shadow-sm ring-1 ring-gray-100">
           {[
             { id: 'overview' as TabType, label: 'Overview', icon: '📊' },
@@ -258,7 +256,6 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -269,7 +266,6 @@ export default function DashboardPage() {
                 </div>
                 <p className="mt-3 text-3xl font-bold text-gray-950">{summary.totalOrders}</p>
               </div>
-
               <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
                 <div className="flex items-center gap-2">
                   <WalletCards className="h-5 w-5 text-blue-600" />
@@ -277,7 +273,6 @@ export default function DashboardPage() {
                 </div>
                 <p className="mt-3 text-3xl font-bold text-gray-950">₹{summary.totalSpent.toFixed(2)}</p>
               </div>
-
               <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
                 <div className="flex items-center gap-2">
                   <Users className="h-5 w-5 text-green-600" />
@@ -285,7 +280,6 @@ export default function DashboardPage() {
                 </div>
                 <p className="mt-3 text-3xl font-bold text-gray-950">{summary.activeGroups}</p>
               </div>
-
               <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
                 <div className="flex items-center gap-2">
                   <ShoppingBag className="h-5 w-5 text-purple-600" />
@@ -303,7 +297,6 @@ export default function DashboardPage() {
                   Shop Now <ArrowRight className="h-4 w-4" />
                 </div>
               </button>
-
               <button onClick={() => router.push('/cart')} className="rounded-2xl border border-gray-200 bg-gray-50 p-6 text-left transition hover:border-[#1d9e75] hover:bg-green-50">
                 <p className="text-lg font-semibold text-gray-950">Your Cart</p>
                 <p className="mt-2 text-sm text-gray-600">Review and checkout</p>
@@ -315,7 +308,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* My Orders Tab */}
         {activeTab === 'orders' && (
           <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
             <div className="mb-6 flex items-center gap-3">
@@ -325,16 +317,12 @@ export default function DashboardPage() {
                 <p className="text-sm text-gray-600">View all your orders and their status</p>
               </div>
             </div>
-
             {allOrders.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
                 <Package className="mx-auto h-12 w-12 text-gray-300" />
                 <p className="mt-3 text-lg font-semibold text-gray-700">No orders yet</p>
                 <p className="mt-1 text-sm text-gray-500">Start shopping to see your orders here</p>
-                <button
-                  onClick={() => router.push('/products')}
-                  className="mt-4 rounded-lg bg-[#1d9e75] px-6 py-2 font-semibold text-white hover:bg-[#15845f]"
-                >
+                <button onClick={() => router.push('/products')} className="mt-4 rounded-lg bg-[#1d9e75] px-6 py-2 font-semibold text-white hover:bg-[#15845f]">
                   Start Shopping
                 </button>
               </div>
@@ -346,27 +334,15 @@ export default function DashboardPage() {
                       <div className="flex-1">
                         <p className="font-semibold text-gray-950">{order.product_name}</p>
                         <div className="mt-2 flex flex-wrap gap-3 text-sm text-gray-600">
-                          <div className="flex items-center gap-1">
-                            <span className="font-semibold">ID:</span> {order.id.slice(0, 8)}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4" /> {new Date(order.created_at).toLocaleDateString('en-IN')}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="font-semibold">Qty:</span> {order.quantity || 1}
-                          </div>
+                          <div className="flex items-center gap-1"><span className="font-semibold">ID:</span> {order.id.slice(0, 8)}</div>
+                          <div className="flex items-center gap-1"><Calendar className="h-4 w-4" /> {new Date(order.created_at).toLocaleDateString('en-IN')}</div>
+                          <div className="flex items-center gap-1"><span className="font-semibold">Qty:</span> {order.quantity || 1}</div>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold text-gray-950">₹{Number(order.amount).toFixed(2)}</p>
                         <p className="text-xs text-gray-600 line-through">₹{Number(order.product_price).toFixed(2)}</p>
-                        <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                          order.status === 'delivered'
-                            ? 'bg-green-100 text-green-700'
-                            : order.status === 'confirmed'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-yellow-100 text-yellow-700'
-                        }`}>
+                        <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${order.status === 'delivered' ? 'bg-green-100 text-green-700' : order.status === 'confirmed' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
                           {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                         </span>
                       </div>
@@ -378,7 +354,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* My Groups Tab */}
         {activeTab === 'groups' && (
           <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
             <div className="mb-6 flex items-center gap-3">
@@ -388,16 +363,12 @@ export default function DashboardPage() {
                 <p className="text-sm text-gray-600">Active group buys you're part of</p>
               </div>
             </div>
-
             {userGroups.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
                 <Users className="mx-auto h-12 w-12 text-gray-300" />
                 <p className="mt-3 text-lg font-semibold text-gray-700">No active groups</p>
                 <p className="mt-1 text-sm text-gray-500">Join or create a group buy to save more</p>
-                <button
-                  onClick={() => router.push('/products')}
-                  className="mt-4 rounded-lg bg-[#1d9e75] px-6 py-2 font-semibold text-white hover:bg-[#15845f]"
-                >
+                <button onClick={() => router.push('/products')} className="mt-4 rounded-lg bg-[#1d9e75] px-6 py-2 font-semibold text-white hover:bg-[#15845f]">
                   Find Group Buys
                 </button>
               </div>
@@ -409,40 +380,22 @@ export default function DashboardPage() {
                       <div className="flex flex-1 items-start gap-4">
                         {membership.product?.image_url && (
                           <div className="relative h-16 w-16 overflow-hidden rounded-2xl bg-gray-100">
-                            <img
-                              src={membership.product.image_url}
-                              alt={membership.product.name || 'Product image'}
-                              loading="lazy"
-                              className="h-full w-full object-cover"
-                            />
+                            <img src={membership.product.image_url} alt={membership.product.name || 'Product image'} loading="lazy" className="h-full w-full object-cover" />
                           </div>
                         )}
                         <div className="min-w-0">
                           <p className="font-semibold text-gray-950">{membership.product?.name || 'Product'}</p>
                           <div className="mt-2 flex flex-wrap gap-3 text-sm text-gray-600">
-                            <div className="flex items-center gap-1">
-                              <Users className="h-4 w-4" /> {membership.group_buy?.member_count || 0} members
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4" /> Joined {new Date(membership.created_at).toLocaleDateString('en-IN')}
-                            </div>
+                            <div className="flex items-center gap-1"><Users className="h-4 w-4" /> {membership.group_buy?.member_count || 0} members</div>
+                            <div className="flex items-center gap-1"><Calendar className="h-4 w-4" /> Joined {new Date(membership.created_at).toLocaleDateString('en-IN')}</div>
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                          membership.group_buy?.status === 'active'
-                            ? 'bg-green-100 text-green-700'
-                            : membership.group_buy?.status === 'pending'
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : 'bg-gray-100 text-gray-700'
-                        }`}>
+                        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${membership.group_buy?.status === 'active' ? 'bg-green-100 text-green-700' : membership.group_buy?.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}`}>
                           {(membership.group_buy?.status || 'Unknown').charAt(0).toUpperCase() + (membership.group_buy?.status || 'Unknown').slice(1)}
                         </span>
-                        <Link
-                          href={`/group/${membership.group_buy_id}`}
-                          className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#1d9e75] hover:underline"
-                        >
+                        <Link href={`/group/${membership.group_buy_id}`} className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#1d9e75] hover:underline">
                           View Group <Eye className="h-3 w-3" />
                         </Link>
                       </div>
@@ -454,7 +407,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* My Wallet Tab */}
         {activeTab === 'wallet' && (
           <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
             <div className="mb-6 flex items-center gap-3">
@@ -464,14 +416,12 @@ export default function DashboardPage() {
                 <p className="text-sm text-gray-600">Payment history and coupons</p>
               </div>
             </div>
-
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 p-6">
                 <p className="text-sm font-semibold text-gray-700">Wallet Balance</p>
                 <p className="mt-3 text-3xl font-bold text-gray-950">₹0.00</p>
                 <p className="mt-2 text-xs text-gray-600">Reload to use for orders</p>
               </div>
-
               <div className="rounded-2xl bg-gradient-to-br from-purple-50 to-purple-100 p-6">
                 <p className="text-sm font-semibold text-gray-700">Available Coupons</p>
                 <p className="mt-3 text-3xl font-bold text-gray-950">{availableCoupons}</p>
@@ -480,7 +430,6 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
-
             <div className="mt-6 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
               <p className="text-gray-700">Wallet features coming soon!</p>
             </div>
