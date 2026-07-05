@@ -18,13 +18,13 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   profile: { name: null, role: null },
-  loading: true,
+  loading: false,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile>({ name: null, role: null });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const fetchProfile = async (userId: string, email?: string) => {
     const supabase = createClient();
@@ -42,6 +42,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const supabase = createClient();
+    let hasResolvedAuth = false;
+
+    const finishAuth = () => {
+      if (!hasResolvedAuth) {
+        hasResolvedAuth = true;
+        setLoading(false);
+      }
+    };
+
+    const timeoutId = window.setTimeout(finishAuth, 2000);
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       const currentUser = session?.user ?? null;
@@ -51,10 +61,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setProfile({ name: null, role: null });
       }
-      setLoading(false);
+      finishAuth();
     });
 
-    return () => authListener.subscription.unsubscribe();
+    return () => {
+      window.clearTimeout(timeoutId);
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   return (
