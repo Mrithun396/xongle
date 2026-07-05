@@ -43,7 +43,7 @@ type TabType = 'overview' | 'orders' | 'groups' | 'wallet';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     if (typeof window !== 'undefined') {
       const tab = new URLSearchParams(window.location.search).get('tab');
@@ -78,11 +78,14 @@ export default function DashboardPage() {
     const loadDashboard = async () => {
       const supabase = createClient();
       try {
+        console.log('Dashboard auth user id:', user.id);
         const { data: userProfile } = await supabase
           .from('users')
           .select('id, name, phone, role, referral_code')
           .eq('id', user.id)
           .single();
+
+        console.log('Dashboard userProfile:', userProfile);
 
         setProfile({
           email: user.email,
@@ -199,8 +202,7 @@ export default function DashboardPage() {
   }, [user, authLoading, router]);
 
   const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await logout();
     router.push('/login');
   };
 

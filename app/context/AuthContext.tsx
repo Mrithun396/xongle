@@ -13,18 +13,28 @@ interface AuthContextValue {
   user: User | null;
   profile: Profile;
   loading: boolean;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   profile: { name: null, role: null },
   loading: false,
+  logout: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile>({ name: null, role: null });
   const [loading, setLoading] = useState(false);
+
+  const logout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    setUser(null);
+    setProfile({ name: null, role: null });
+    setLoading(false);
+  };
 
   const fetchProfile = async (userId: string, email?: string) => {
     const supabase = createClient();
@@ -71,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading }}>
+    <AuthContext.Provider value={{ user, profile, loading, logout }}>
       {children}
     </AuthContext.Provider>
   );
