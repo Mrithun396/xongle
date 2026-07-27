@@ -26,7 +26,7 @@ const AuthContext = createContext<AuthContextValue>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile>({ name: null, role: null });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const logout = async () => {
     const supabase = createClient();
@@ -53,6 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const supabase = createClient();
     let hasResolvedAuth = false;
+    let isMounted = true;
 
     const finishAuth = () => {
       if (!hasResolvedAuth) {
@@ -62,6 +63,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const timeoutId = window.setTimeout(finishAuth, 2000);
+
+    const initializeAuth = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!isMounted) return;
+
+        const currentUser = data.session?.user ?? null;
+        setUser(currentUser);
+        if (currentUser) {
+          await fetchProfile(currentUser.id, currentUser.email);
+        } else {
+          setProfile({ name: null, role: null });
+        }
+      } catch (error) {
+        console.error('Failed to initialize auth session:', error);
+      } finally {
+        if (isMounted) {
+          finishAuth();
+        }
+      }
+    };
+
+    void initializeAuth();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       const currentUser = session?.user ?? null;
@@ -75,6 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
+      isMounted = false;
       window.clearTimeout(timeoutId);
       authListener.subscription.unsubscribe();
     };
