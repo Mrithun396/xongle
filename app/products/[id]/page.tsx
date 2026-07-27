@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Navbar from '@/app/components/Navbar';
 import { createClient } from '@/app/lib/supabase';
 import { useCart } from '@/app/context/CartContext';
+import { useAuth } from '@/app/context/AuthContext';
 import { ArrowLeft, ShoppingCart, Star, Zap, Users, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface Product {
@@ -40,19 +41,9 @@ export default function ProductDetailPage() {
   const [error, setError] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [cartMessage, setCartMessage] = useState('');
-  const [user, setUser] = useState<any>(null);
 
   const { addToCart } = useCart();
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      const supabase = createClient();
-      const { data } = await supabase.auth.getSession();
-      setUser(data.session?.user || null);
-    };
-
-    checkAuth();
-  }, []);
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     const fetchProduct = async () => {
