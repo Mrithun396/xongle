@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { createClient } from '@/app/lib/supabase';
+import { withTimeout } from '@/app/lib/withTimeout';
+import { useAuth } from '@/app/context/AuthContext';
 import { Users, ArrowLeft, Check } from 'lucide-react';
 
 interface GroupBuy {
@@ -38,22 +40,14 @@ export default function GroupBuyDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [joined, setJoined] = useState(false);
-  const [user, setUser] = useState<any>(null);
 
   const groupBuyId = params.id as string;
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const supabase = createClient();
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        router.push('/login');
-        return;
-      }
-      setUser(data.session.user);
-    };
-    checkAuth();
-  }, [router]);
+    if (authLoading) return;
+    if (!user) router.push('/login');
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -63,30 +57,39 @@ export default function GroupBuyDetailPage() {
         setError('');
 
         // Fetch group buy
-        const { data: groupBuyData, error: gbError } = await supabase
-          .from('group_buys')
-          .select('*')
-          .eq('id', groupBuyId)
-          .single();
+        const { data: groupBuyData, error: gbError } = await withTimeout(
+          supabase
+            .from('group_buys')
+            .select('*')
+            .eq('id', groupBuyId)
+            .single(),
+          10000
+        );
 
         if (gbError) throw gbError;
         setGroupBuy(groupBuyData);
 
         // Fetch product
-        const { data: productData, error: pError } = await supabase
-          .from('products')
-          .select('*')
-          .eq('id', groupBuyData.product_id)
-          .single();
+        const { data: productData, error: pError } = await withTimeout(
+          supabase
+            .from('products')
+            .select('*')
+            .eq('id', groupBuyData.product_id)
+            .single(),
+          10000
+        );
 
         if (pError) throw pError;
         setProduct(productData);
 
         // Fetch members
-        const { data: membersData, error: mError } = await supabase
-          .from('group_members')
-          .select('user_id, joined_at')
-          .eq('group_buy_id', groupBuyId);
+        const { data: membersData, error: mError } = await withTimeout(
+          supabase
+            .from('group_members')
+            .select('user_id, joined_at')
+            .eq('group_buy_id', groupBuyId),
+          10000
+        );
 
         if (mError) throw mError;
         setMembers(membersData || []);
@@ -110,6 +113,8 @@ export default function GroupBuyDetailPage() {
   }, [user, groupBuyId]);
 
   const handleJoinGroup = async () => {
+    if (!user) return;
+
     try {
       const supabase = createClient();
       const { error } = await supabase.from('group_members').insert([
