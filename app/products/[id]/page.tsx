@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/app/components/Navbar';
 import { createClient } from '@/app/lib/supabase';
+import { withTimeout } from '@/app/lib/withTimeout';
 import { useCart } from '@/app/context/CartContext';
 import { useAuth } from '@/app/context/AuthContext';
 import { ArrowLeft, ShoppingCart, Star, Zap, Users, AlertCircle, CheckCircle } from 'lucide-react';
@@ -57,33 +58,42 @@ export default function ProductDetailPage() {
         setError('');
 
         console.time(`fetchProduct:${productId}`);
-        const { data: productData, error: productError } = await supabase
-          .from('products')
-          .select('*')
-          .eq('id', productId)
-          .single();
+        const { data: productData, error: productError } = await withTimeout(
+          supabase
+            .from('products')
+            .select('*')
+            .eq('id', productId)
+            .single(),
+          10000
+        );
         console.timeEnd(`fetchProduct:${productId}`);
 
         if (productError) throw productError;
         setProduct(productData);
 
-        const { data: groupBuysData, error: groupBuysError } = await supabase
-          .from('group_buys')
-          .select('*')
-          .eq('product_id', productId)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false });
+        const { data: groupBuysData, error: groupBuysError } = await withTimeout(
+          supabase
+            .from('group_buys')
+            .select('*')
+            .eq('product_id', productId)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false }),
+          10000
+        );
 
         if (groupBuysError) throw groupBuysError;
         setGroupBuys(groupBuysData || []);
 
-        const { data: relatedData, error: relatedError } = await supabase
-          .from('products')
-          .select('*')
-          .eq('status', 'active')
-          .eq('category', productData.category)
-          .neq('id', productData.id)
-          .limit(4);
+        const { data: relatedData, error: relatedError } = await withTimeout(
+          supabase
+            .from('products')
+            .select('*')
+            .eq('status', 'active')
+            .eq('category', productData.category)
+            .neq('id', productData.id)
+            .limit(4),
+          10000
+        );
 
         if (relatedError) {
           throw relatedError;

@@ -1,16 +1,9 @@
-export function withTimeout<T>(promise: Promise<T>, ms: number) {
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
-  const timeoutPromise = new Promise<T>((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error('timeout')), ms);
+export function withTimeout<T = any>(promise: PromiseLike<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeoutId = setTimeout(() => reject(new Error('timeout')), ms);
+    Promise.resolve(promise).then(
+      (val) => { clearTimeout(timeoutId); resolve(val); },
+      (err) => { clearTimeout(timeoutId); reject(err); }
+    );
   });
-
-  return Promise.race([
-    promise.finally(() => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    }),
-    timeoutPromise,
-  ]);
 }
