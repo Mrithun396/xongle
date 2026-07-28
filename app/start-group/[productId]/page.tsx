@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Navbar from '@/app/components/Navbar';
-import { createClient } from '@/app/lib/supabase';
+import { createClient, createPublicClient } from '@/app/lib/supabase';
+import { withTimeout } from '@/app/lib/withTimeout';
+import { useAuth } from '@/app/context/AuthContext';
 import { Calendar, Users, Zap, AlertCircle } from 'lucide-react';
 
 interface Product {
@@ -24,33 +26,28 @@ export default function StartGroupPage() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const [expiresIn, setExpiresIn] = useState('7');
-  const [user, setUser] = useState<any>(null);
-
   const productId = params.productId as string;
 
+  const { user, loading: authLoading } = useAuth();
+
   useEffect(() => {
-    const checkAuth = async () => {
-      const supabase = createClient();
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        router.push('/login');
-        return;
-      }
-      setUser(data.session.user);
-    };
-    checkAuth();
-  }, [router]);
+    if (authLoading) return;
+    if (!user) router.push('/login');
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const supabase = createClient();
+        const supabase = createPublicClient();
         setLoading(true);
-        const { data, error } = await supabase
-          .from('products')
-          .select('*')
-          .eq('id', productId)
-          .single();
+        const { data, error } = await withTimeout(
+          supabase
+            .from('products')
+            .select('*')
+            .eq('id', productId)
+            .single(),
+          10000
+        );
 
         if (error) throw error;
         setProduct(data);
