@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/app/components/Navbar';
 import { useCart } from '@/app/context/CartContext';
+import { useAuth } from '@/app/context/AuthContext';
 import { createClient } from '@/app/lib/supabase';
 import { CheckCircle, Package, MapPin, CreditCard, Tag, AlertCircle } from 'lucide-react';
 
@@ -11,8 +12,6 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { cart, cartTotal, clearCart } = useCart();
 
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState('');
   const [couponCode, setCouponCode] = useState('');
@@ -27,26 +26,20 @@ export default function CheckoutPage() {
     state: '',
   });
 
+  const { user, loading: authLoading } = useAuth();
+
   useEffect(() => {
-    const checkAuth = async () => {
-      const supabase = createClient();
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        router.push('/login?redirect=/checkout');
-        return;
-      }
-
-      setUser(data.session.user);
-      setForm((current) => ({
-        ...current,
-        phone: data.session.user.phone || '',
-        name: data.session.user.user_metadata.full_name || '',
-      }));
-      setLoading(false);
-    };
-
-    checkAuth();
-  }, [router]);
+    if (authLoading) return;
+    if (!user) {
+      router.push('/login?redirect=/checkout');
+      return;
+    }
+    setForm((current) => ({
+      ...current,
+      phone: user.phone || '',
+      name: user.user_metadata?.full_name || '',
+    }));
+  }, [user, authLoading, router]);
 
   const subtotal = useMemo(() => cartTotal, [cartTotal]);
   const couponDiscount = useMemo(() => {
@@ -81,6 +74,8 @@ export default function CheckoutPage() {
   };
 
   const handlePlaceOrder = async () => {
+    if (!user) return;
+
     if (!form.name.trim() || !form.phone.trim() || !form.address.trim() || !form.city.trim() || !form.pincode.trim() || !form.state.trim()) {
       setError('Please complete all shipping fields before placing the order.');
       return;
@@ -182,7 +177,7 @@ export default function CheckoutPage() {
     }
   };
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-white">
         <Navbar showSearch={false} />

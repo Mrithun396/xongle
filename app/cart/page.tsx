@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/app/components/Navbar';
 import { useCart } from '@/app/context/CartContext';
-import { createClient } from '@/app/lib/supabase';
-import { withTimeout } from '@/app/lib/withTimeout';
+import { useAuth } from '@/app/context/AuthContext';
 import {
   ArrowLeft,
   Trash2,
@@ -20,43 +19,14 @@ import Link from 'next/link';
 export default function CartPage() {
   const router = useRouter();
   const { cart, removeFromCart, updateQuantity, cartTotal } = useCart();
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading: authLoading } = useAuth();
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      console.log('checkAuth: starting');
-      const supabase = createClient();
-      console.log('checkAuth: got supabase client');
-
-      try {
-        type SessionResult = Awaited<ReturnType<typeof supabase.auth.getSession>>;
-
-        const sessionResult: SessionResult | null = await withTimeout(supabase.auth.getSession(), 3000).catch((error) => {
-          if (error instanceof Error && error.message === 'timeout') {
-            console.log('checkAuth: getSession timed out');
-            return null;
-          }
-
-          throw error;
-        });
-
-        if (!sessionResult) {
-          setUser(null);
-          return;
-        }
-
-        const { data } = sessionResult;
-        console.log('checkAuth: got session result', data);
-        setUser(data.session?.user || null);
-      } catch (error) {
-        console.error('Failed to load auth session in CartPage:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    checkAuth();
-  }, []);
+    if (authLoading) return;
+    if (ready) return;
+    setReady(true);
+  }, [authLoading, ready]);
 
   const handleCheckout = () => {
     if (!user) {
@@ -74,7 +44,7 @@ export default function CartPage() {
     return total + (item.price - discountedPrice) * item.quantity;
   }, 0);
 
-  if (loading) {
+  if (authLoading || !ready) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-white to-green-50">
         <Navbar />
