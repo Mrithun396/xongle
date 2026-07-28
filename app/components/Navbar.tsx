@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/app/lib/supabase';
+
 import { useCart } from '@/app/context/CartContext';
 import { useAuth } from '@/app/context/AuthContext';
 import {
@@ -31,7 +31,7 @@ const categories = [
 
 export default function Navbar({ showSearch = true, onSearch }: { showSearch?: boolean; onSearch?: (query: string) => void }) {
   const router = useRouter();
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { cartCount } = useCart();
@@ -52,8 +52,7 @@ export default function Navbar({ showSearch = true, onSearch }: { showSearch?: b
   };
 
   const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await logout();
     router.push('/');
   };
 
