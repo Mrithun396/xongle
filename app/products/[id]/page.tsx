@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/app/components/Navbar';
-import { createClient } from '@/app/lib/supabase';
+import { createPublicClient } from '@/app/lib/supabase';
 import { withTimeout } from '@/app/lib/withTimeout';
 import { useCart } from '@/app/context/CartContext';
 import { useAuth } from '@/app/context/AuthContext';
@@ -44,20 +44,14 @@ export default function ProductDetailPage() {
   const [cartMessage, setCartMessage] = useState('');
 
   const { addToCart } = useCart();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
-    if (authLoading) return;
-
-    console.log('effect fired, authLoading:', authLoading, 'user:', !!user);
-
     const fetchProduct = async () => {
       try {
-        const supabase = createClient();
+        const supabase = createPublicClient();
         setLoading(true);
         setError('');
-
-        console.time(`fetchProduct:${productId}`);
         const { data: productData, error: productError } = await withTimeout(
           supabase
             .from('products')
@@ -66,7 +60,6 @@ export default function ProductDetailPage() {
             .single(),
           10000
         );
-        console.timeEnd(`fetchProduct:${productId}`);
 
         if (productError) throw productError;
         setProduct(productData);
@@ -111,7 +104,7 @@ export default function ProductDetailPage() {
     if (productId) {
       fetchProduct();
     }
-  }, [productId, authLoading]);
+  }, [productId]);
 
   const handleAddToCart = () => {
     if (!product) return;

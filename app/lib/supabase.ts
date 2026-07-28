@@ -1,4 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -23,3 +24,13 @@ export const supabase = new Proxy({} as ReturnType<typeof createClient>, {
     return createClient()[prop as keyof ReturnType<typeof createClient>]
   }
 })
+
+/**
+ * A plain Supabase client without the @supabase/ssr fetch interceptor.
+ * Use for reading public data where auth session cookies are not needed.
+ * The SSR client's internal interceptor can hang after session refresh
+ * on some Netlify deployments; this client bypasses that layer entirely.
+ */
+export function createPublicClient() {
+  return createSupabaseClient(supabaseUrl, supabaseAnonKey)
+}
