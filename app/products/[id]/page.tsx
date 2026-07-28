@@ -46,17 +46,23 @@ export default function ProductDetailPage() {
   const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
+    if (authLoading) return;
+
+    console.log('effect fired, authLoading:', authLoading, 'user:', !!user);
+
     const fetchProduct = async () => {
       try {
         const supabase = createClient();
         setLoading(true);
         setError('');
 
+        console.time(`fetchProduct:${productId}`);
         const { data: productData, error: productError } = await supabase
           .from('products')
           .select('*')
           .eq('id', productId)
           .single();
+        console.timeEnd(`fetchProduct:${productId}`);
 
         if (productError) throw productError;
         setProduct(productData);
@@ -95,7 +101,7 @@ export default function ProductDetailPage() {
     if (productId) {
       fetchProduct();
     }
-  }, [productId]);
+  }, [productId, authLoading]);
 
   const handleAddToCart = () => {
     if (!product) return;
